@@ -87,3 +87,8 @@
 - [x] Tạo rollback script chỉ xóa object Stock Advisor với xác nhận thủ công
 - [x] Viết hướng dẫn dry-run, backup và chạy migration trên Supabase SQL Editor/CLI
 - [x] Bổ sung quy trình backup schema/dữ liệu và xác minh khả năng restore trước migration Supabase dùng chung
+
+- [x] Soạn checklist deploy checkpoint 8d90fda1 lên Vercel với GitHub main
+- [x] Hướng dẫn chạy migration additive-only trong Supabase database dùng chung
+- [x] Hướng dẫn cấu hình toàn bộ Vercel Environment Variables cho database, cron, email và push
+- [x] Hướng dẫn kiểm tra Vercel Cron 11:00 UTC, manual sync, history và Push Notification
