@@ -92,7 +92,11 @@ Vào **Project → Settings → Environment Variables** và thêm cho **Producti
 
 Không đặt `VAPID_PRIVATE_KEY`, database password hoặc service-role key trong `VITE_*`, source code, `vercel.json`, GitHub hoặc localStorage.
 
-## 6. Kiểm tra Vercel Cron
+## 6. Kiểm tra Vercel serverless API và Cron
+
+Repository phải được deploy từ root có cả `api/trpc/[trpc].ts` và `api/cron/sync-market.ts`. `vercel.json` đã cấu hình `pnpm build`, output `dist/public` cho UI, đồng thời giữ các API functions. Nếu UI hiển thị nhưng AI báo chưa cấu hình, hãy kiểm tra request `/api/trpc/ai.config`; request này phải trả HTTP 200 JSON, không phải 404 hoặc HTML. Sau khi thêm `OPENAI_API_KEY` hoặc `SUPABASE_DATABASE_URL`, bắt buộc redeploy để serverless function nhận biến mới.
+
+## 7. Kiểm tra Vercel Cron
 
 File `vercel.json` hiện có:
 
@@ -115,13 +119,13 @@ Sau production deployment, mở **Vercel → Project → Cron Jobs** để kiể
 curl -i -H "Authorization: Bearer $CRON_SECRET" https://<your-domain>/api/cron/sync-market
 ```
 
-## 7. Thứ tự deploy an toàn
+## 8. Thứ tự deploy an toàn
 
 Trước hết push code PostgreSQL lên `main` và tạo Vercel Preview. Tiếp theo backup và chạy migration trên Supabase, kiểm tra object. Sau đó khai báo `SUPABASE_DATABASE_URL` ở Preview, chạy manual sync và mở `/history`. Khi mọi thứ ổn định, thêm cùng biến vào Production, redeploy và kiểm tra Cron Jobs.
 
 Không dùng `DATABASE_URL` của MySQL/TiDB cho bản PostgreSQL này. Nếu Preview chưa có `SUPABASE_DATABASE_URL`, app sẽ không kết nối database và các thao tác dữ liệu sẽ trả trạng thái rỗng/lỗi; hãy cấu hình secret trước khi kiểm thử production.
 
-## 8. Checklist production
+## 9. Checklist production
 
 | Kiểm tra | Kết quả mong muốn |
 |---|---|
