@@ -115,3 +115,5 @@
 - [x] Mock OpenAI helper trong syncMarket test để xác nhận model từ ai_settings được truyền đúng khi phân tích tài sản
 
 - [x] Đồng bộ checkpoint OpenAI mới nhất lên GitHub repository `trietnguyenk16-nkt/Stock-Advisor` và xác minh commit remote
+
+- [ ] Khắc phục domain Vercel đang hiển thị source code thay vì UI và xác minh production render
