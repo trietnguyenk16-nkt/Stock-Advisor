@@ -153,6 +153,37 @@ export async function getLatestSnapshots(workspaceKey = "owner") {
   return db.select({ asset: trackedAssets, snapshot: priceSnapshots }).from(trackedAssets).leftJoin(priceSnapshots, eq(trackedAssets.id, priceSnapshots.assetId)).where(and(eq(trackedAssets.workspaceKey, workspaceKey), eq(trackedAssets.isActive, 1))).orderBy(desc(priceSnapshots.asOf));
 }
 
+export async function getDashboardData(workspaceKey = "owner") {
+  const db = await getDb();
+  if (!db) return { assets: [], latestSync: undefined };
+  const assets = await getTrackedAssets(workspaceKey);
+  const snapshots = await db.select().from(priceSnapshots).orderBy(desc(priceSnapshots.asOf));
+  const news = await db.select().from(newsItems).orderBy(desc(newsItems.publishedAt), desc(newsItems.fetchedAt));
+  const analyses = await db.select().from(assetAnalyses).orderBy(desc(assetAnalyses.asOf));
+  const latestBy = <T extends { assetId: number }>(rows: T[]) => {
+    const map = new Map<number, T>();
+    for (const row of rows) if (!map.has(row.assetId)) map.set(row.assetId, row);
+    return map;
+  };
+  const latestSnapshots = latestBy(snapshots);
+  const latestNews = new Map<number, typeof news>();
+  for (const item of news) {
+    const list = latestNews.get(item.assetId) ?? [];
+    if (list.length < 5) list.push(item);
+    latestNews.set(item.assetId, list);
+  }
+  const latestAnalyses = latestBy(analyses);
+  return {
+    assets: assets.map((asset) => ({
+      asset,
+      snapshot: latestSnapshots.get(asset.id),
+      news: latestNews.get(asset.id) ?? [],
+      analysis: latestAnalyses.get(asset.id),
+    })),
+    latestSync: await getLatestSyncRun(),
+  };
+}
+
 
 export async function addTrackedAsset(values: typeof trackedAssets.$inferInsert) {
   const db = await getDb();

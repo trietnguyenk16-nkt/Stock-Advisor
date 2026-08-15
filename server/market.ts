@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { publicProcedure, router } from "./_core/trpc";
+import { getDashboardData } from "./db";
 
 const tickerInput = z.object({ ticker: z.string().min(1).max(32) });
 
@@ -11,6 +12,7 @@ async function getYahoo<T>(url: string): Promise<T> {
 }
 
 export const marketRouter = router({
+  dashboard: publicProcedure.query(() => getDashboardData("owner")),
   quote: publicProcedure.input(tickerInput).query(async ({ input }) => {
     const ticker = input.ticker.trim().toUpperCase();
     const payload = await getYahoo<any>(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=5d&interval=1d`);

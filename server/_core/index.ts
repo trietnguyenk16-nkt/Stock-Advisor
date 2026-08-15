@@ -10,6 +10,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { sdk } from "./sdk";
 import { syncMarket } from "../syncMarket";
+import { getHeartbeatRunKey } from "../scheduler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -43,7 +44,7 @@ async function startServer() {
     try {
       const user = await sdk.authenticateRequest(req);
       if (!user.isCron || !user.taskUid) return res.status(403).json({ error: "cron-only", context });
-      const result = await syncMarket(`heartbeat:${user.taskUid}:${Math.floor(Date.now() / (2 * 60 * 60 * 1000))}`);
+      const result = await syncMarket(getHeartbeatRunKey(user.taskUid));
       return res.json({ ok: true, ...result });
     } catch (error) {
       return res.status(500).json({ error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, context });

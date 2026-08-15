@@ -16,7 +16,11 @@ export type VietnamQuote = {
 export type VietnamNews = { fingerprint: string; title: string; sourceName: string; sourceUrl: string; snippet?: string; publishedAt?: number };
 
 const USER_AGENT = "LumenPersonalDesk/1.0 (+Vietnam personal research tool)";
-const SJC_URL = "https://sjc.com.vn/";
+const GOLD_SOURCES = [
+  { name: "SJC", url: "https://sjc.com.vn/", label: "Vàng SJC 1L" },
+  { name: "PNJ", url: "https://www.pnj.com.vn/site/gia-vang", label: "Vàng miếng SJC" },
+  { name: "DOJI", url: "https://doji.vn/", label: "SJC" },
+] as const;
 
 export function parseVietnamNumber(value: string): number | undefined {
   const cleaned = value.replace(/[^0-9,.-]/g, "").trim();
@@ -51,12 +55,20 @@ function extractAround(html: string, label: string) {
 }
 
 async function fetchGoldQuote(asset: TrackedAsset): Promise<VietnamQuote> {
-  const html = await fetchText(SJC_URL);
-  const block = extractAround(html, asset.providerCode || "Vàng SJC 1L");
-  const prices = Array.from(block.matchAll(/(?:buy|sell|mua vào|bán ra)[^0-9]{0,80}([0-9][0-9.,]*)/gi)).map((match) => parseVietnamNumber(match[1] ?? "")).filter((value): value is number => value !== undefined);
-  if (prices.length < 2) throw new Error("Không parse được bid/ask giá SJC từ nguồn chính thức");
-  const now = Date.now();
-  return { bid: prices[0] * 1000, ask: prices[1] * 1000, price: prices[1] * 1000, asOf: now, sourceName: "SJC", sourceUrl: SJC_URL, freshness: "unknown", warning: "Giá được đọc từ bảng công khai; cần kiểm tra timestamp hiển thị trên trang nguồn." };
+  const errors: string[] = [];
+  for (const source of GOLD_SOURCES) {
+    try {
+      const html = await fetchText(source.url);
+      const block = extractAround(html, asset.providerCode || source.label);
+      const prices = Array.from(block.matchAll(/(?:buy|sell|mua vào|bán ra|mua|bán)[^0-9]{0,100}([0-9][0-9.,]*)/gi)).map((match) => parseVietnamNumber(match[1] ?? "")).filter((value): value is number => value !== undefined);
+      if (prices.length < 2) throw new Error(`Không parse được bid/ask từ ${source.name}`);
+      const now = Date.now();
+      return { bid: prices[0] * 1000, ask: prices[1] * 1000, price: prices[1] * 1000, asOf: now, sourceName: source.name, sourceUrl: source.url, freshness: "unknown", warning: `Giá đọc từ bảng công khai ${source.name}; cần kiểm tra timestamp trên nguồn.` };
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+  throw new Error(`Không lấy được giá vàng từ SJC/PNJ/DOJI: ${errors.join(" | ")}`);
 }
 
 async function fetchFundNav(asset: TrackedAsset): Promise<VietnamQuote> {

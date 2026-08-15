@@ -20,7 +20,7 @@ async function createAnalysis(asset: { ticker: string; displayName: string; asse
   return JSON.parse(content) as { signal: "BUY" | "SELL" | "HOLD"; summary: string; referencePrice: number; targetPrice: number; risk: string; confidence: number };
 }
 
-async function sendDigest(runKey: string, lines: string[]) {
+export async function sendDigest(runKey: string, lines: string[]) {
   const existingDelivery = await getEmailDelivery(runKey);
   if (existingDelivery?.status === "sent" || existingDelivery?.status === "skipped") return { status: "deduplicated" as const };
   const recipient = process.env.ALERT_EMAIL;
