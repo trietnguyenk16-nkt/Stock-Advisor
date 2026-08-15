@@ -127,3 +127,5 @@
 - [ ] Cô lập lỗi runtime Vercel function sau deployment mới và thay handler tRPC bằng adapter tối giản có fallback an toàn
 
 - [ ] Sửa OpenAI status trên Vercel và bảo đảm manual sync cập nhật dữ liệu rồi refresh các query dashboard
+
+- [ ] Thay Vercel tRPC catch-all đang crash bằng API functions độc lập cho AI config, quote và manual sync; cập nhật frontend gọi đúng endpoints
