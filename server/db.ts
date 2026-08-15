@@ -93,7 +93,7 @@ export async function getUserByOpenId(openId: string) {
 
 
 import { and, desc } from "drizzle-orm";
-import { assetAnalyses, emailDeliveries, newsItems, priceSnapshots, syncRuns, trackedAssets } from "../drizzle/schema";
+import { assetAnalyses, emailDeliveries, newsItems, priceSnapshots, pushSubscriptions, syncRuns, trackedAssets } from "../drizzle/schema";
 
 export async function getTrackedAssets(workspaceKey = "owner") {
   const db = await getDb();
@@ -205,4 +205,36 @@ export async function getEmailDelivery(runKey: string) {
   if (!db) return undefined;
   const rows = await db.select().from(emailDeliveries).where(eq(emailDeliveries.runKey, runKey)).limit(1);
   return rows[0];
+}
+
+export async function getSyncHistory(limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(syncRuns).orderBy(desc(syncRuns.startedAt)).limit(Math.min(Math.max(limit, 1), 100));
+}
+
+export async function getEmailHistory(limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(emailDeliveries).orderBy(desc(emailDeliveries.createdAt)).limit(Math.min(Math.max(limit, 1), 100));
+}
+
+export async function upsertPushSubscription(values: { workspaceKey?: string; endpoint: string; p256dh: string; auth: string; userAgent?: string }) {
+  const db = await getDb();
+  if (!db) return undefined;
+  await db.insert(pushSubscriptions).values({ ...values, workspaceKey: values.workspaceKey ?? "owner" }).onDuplicateKeyUpdate({ set: { p256dh: values.p256dh, auth: values.auth, userAgent: values.userAgent } });
+  const rows = await db.select().from(pushSubscriptions).where(and(eq(pushSubscriptions.workspaceKey, values.workspaceKey ?? "owner"), eq(pushSubscriptions.endpoint, values.endpoint))).limit(1);
+  return rows[0];
+}
+
+export async function deletePushSubscription(endpoint: string, workspaceKey = "owner") {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(pushSubscriptions).where(and(eq(pushSubscriptions.workspaceKey, workspaceKey), eq(pushSubscriptions.endpoint, endpoint)));
+}
+
+export async function getPushSubscriptions(workspaceKey = "owner") {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(pushSubscriptions).where(eq(pushSubscriptions.workspaceKey, workspaceKey));
 }

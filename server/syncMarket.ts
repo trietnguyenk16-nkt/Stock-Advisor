@@ -1,6 +1,7 @@
 import { invokeLLM } from "./_core/llm";
 import { getTrackedAssets, createSyncRun, finishSyncRun, getEmailDelivery, insertAssetAnalysis, insertNewsItem, insertPriceSnapshot, recordEmailDelivery } from "./db";
 import { fetchVietnamNews, fetchVietnamQuote } from "./vietnamProviders";
+import { sendPushNotification } from "./push";
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character] ?? character);
@@ -65,5 +66,6 @@ export async function syncMarket(runKey: string) {
   try { await sendDigest(runKey, digestLines); } catch (error) { errors.push(`email: ${error instanceof Error ? error.message : String(error)}`); }
   const status = errors.length === 0 ? "success" : succeeded > 0 ? "partial" : "failed";
   await finishSyncRun(runKey, { status, finishedAt: Date.now(), assetsProcessed: assets.length, assetsSucceeded: succeeded, errorMessage: errors.length ? errors.join("\n").slice(0, 4000) : undefined });
+  await sendPushNotification("Lumen · Cập nhật thị trường", `Đồng bộ ${status}: ${succeeded}/${assets.length} tài sản có dữ liệu.`, "/").catch(() => undefined);
   return { runKey, status, assetsProcessed: assets.length, assetsSucceeded: succeeded, errors };
 }

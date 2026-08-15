@@ -93,6 +93,19 @@ export const syncRuns = mysqlTable("sync_runs", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const pushSubscriptions = mysqlTable("push_subscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  workspaceKey: varchar("workspaceKey", { length: 96 }).notNull().default("owner"),
+  endpoint: varchar("endpoint", { length: 2048 }).notNull(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  userAgent: varchar("userAgent", { length: 512 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  workspaceEndpointUnique: uniqueIndex("push_subscriptions_workspace_endpoint_unique").on(table.workspaceKey, table.endpoint),
+}));
+
 export const emailDeliveries = mysqlTable("email_deliveries", {
   id: int("id").autoincrement().primaryKey(),
   runKey: varchar("runKey", { length: 96 }).notNull().unique(),
@@ -113,3 +126,4 @@ export type NewsItem = typeof newsItems.$inferSelect;
 export type AssetAnalysis = typeof assetAnalyses.$inferSelect;
 export type SyncRun = typeof syncRuns.$inferSelect;
 export type EmailDelivery = typeof emailDeliveries.$inferSelect;
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;

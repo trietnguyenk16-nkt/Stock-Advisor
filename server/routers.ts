@@ -2,12 +2,13 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
+import { z } from "zod";
+import { deletePushSubscription, getPushSubscriptions, upsertPushSubscription } from "./db";
+import { getPushConfig } from "./push";
 import { marketRouter } from "./market";
 import { addTrackedAsset, deactivateTrackedAsset, getTrackedAssets } from "./db";
-import { z } from "zod";
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   market: marketRouter,
   watchlist: router({
@@ -20,18 +21,18 @@ export const appRouter = router({
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
+      return { success: true } as const;
     }),
   }),
-
-  // TODO: add feature routers here, e.g.
-  // todo: router({
-  //   list: protectedProcedure.query(({ ctx }) =>
-  //     db.getUserTodos(ctx.user.id)
-  //   ),
-  // }),
+  push: router({
+    config: publicProcedure.query(() => getPushConfig()),
+    subscribe: publicProcedure.input(z.object({ endpoint: z.string().url(), keys: z.object({ p256dh: z.string().min(1), auth: z.string().min(1) }) })).mutation(async ({ input, ctx }) => {
+      const subscription = await upsertPushSubscription({ endpoint: input.endpoint, p256dh: input.keys.p256dh, auth: input.keys.auth, userAgent: ctx.req.headers["user-agent"] });
+      return { ok: Boolean(subscription) };
+    }),
+    unsubscribe: publicProcedure.input(z.object({ endpoint: z.string().url() })).mutation(async ({ input }) => { await deletePushSubscription(input.endpoint); return { ok: true }; }),
+    count: publicProcedure.query(async () => (await getPushSubscriptions()).length),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

@@ -64,3 +64,26 @@
 - [x] Thêm vercel.json route cron bảo vệ bằng CRON_SECRET và gọi pipeline phù hợp
 - [x] Viết test cho timezone conversion và cấu hình lịch
 - [x] Cập nhật tài liệu/issue Vercel, chạy test/build, checkpoint và push GitHub
+
+- [ ] Thêm mutation đồng bộ thị trường thủ công có bảo vệ chống chạy trùng
+- [ ] Thêm lưu subscription và gửi Push Notification cho PWA
+- [ ] Thêm API lịch sử sync và trạng thái email delivery gần nhất
+- [ ] Thêm nút đồng bộ thủ công và trạng thái tiến trình trên dashboard
+- [ ] Thêm UI xin quyền/cài Push Notification và trạng thái đã bật/tắt
+- [ ] Thêm trang dashboard history cho sync/email
+- [ ] Viết test cho manual sync, push subscription, history và PWA flows
+- [ ] Chạy typecheck/test/build, chụp mobile preview, checkpoint và push GitHub
+
+- [ ] Tạo issue migration database từ MySQL/TiDB sang Supabase PostgreSQL
+- [ ] Xác định biến môi trường Supabase/Vercel và connection pooler
+- [ ] Chuyển schema Drizzle từ mysql-core sang pg-core
+- [ ] Tạo SQL migration Supabase cho watchlist, snapshots, news, analysis, sync, email và push subscriptions
+- [ ] Thiết lập RLS tối thiểu cho workspace owner, không bật Supabase Auth
+- [ ] Viết kiểm tra kết nối và hướng dẫn seed/backup Supabase
+
+- [x] Chọn namespace/table prefix riêng cho Stock Advisor trên database dùng chung
+- [x] Tạo migration PostgreSQL chỉ CREATE schema/table/index mới, không DROP/ALTER table cũ
+- [x] Tạo script kiểm tra table/index đã tồn tại và danh sách object được tạo
+- [x] Tạo rollback script chỉ xóa object Stock Advisor với xác nhận thủ công
+- [x] Viết hướng dẫn dry-run, backup và chạy migration trên Supabase SQL Editor/CLI
+- [x] Bổ sung quy trình backup schema/dữ liệu và xác minh khả năng restore trước migration Supabase dùng chung

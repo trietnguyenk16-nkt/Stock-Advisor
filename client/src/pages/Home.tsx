@@ -25,6 +25,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { Input } from "@/components/ui/input";
+import { Link } from "wouter";
+import PushNotificationCard from "@/components/PushNotificationCard";
 
 
 type AssetKind = "Cổ phiếu" | "Chứng chỉ quỹ" | "Vàng";
@@ -65,6 +67,7 @@ export default function Home() {
   const [isAdding, setIsAdding] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState("Chưa có lần đồng bộ");
+  const syncNow = trpc.market.syncNow.useMutation();
 
   useEffect(() => {
     localStorage.setItem("stock-advisor-assets", JSON.stringify(assets));
@@ -84,9 +87,12 @@ export default function Home() {
 
   const refresh = async () => {
     setIsRefreshing(true);
-    await new Promise((resolve) => setTimeout(resolve, 650));
-    setLastUpdated(new Date().toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }));
-    setIsRefreshing(false);
+    try {
+      await syncNow.mutateAsync();
+      setLastUpdated(new Date().toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }));
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   return (
@@ -114,7 +120,7 @@ export default function Home() {
             <p className="mt-4 max-w-xl text-sm leading-6 text-[#b5c8be] sm:text-[15px]">Giá, tin tức và phân tích AI được gom vào cùng một nhịp theo dõi. Bạn luôn biết dữ liệu được cập nhật lúc nào và nhận định dựa trên điều gì.</p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Button onClick={refresh} className="min-h-11 rounded-full bg-[#d8f0df] px-4 text-[#173a2b] hover:bg-white" disabled={isRefreshing}><RefreshCw size={15} className={isRefreshing ? "mr-2 animate-spin" : "mr-2"} />{isRefreshing ? "Đang đồng bộ" : "Đồng bộ ngay"}</Button>
-              <div className="flex items-center gap-2 text-xs text-[#a7beb1]"><Clock3 size={14} />Tự động mỗi 2 giờ</div>
+              <div className="flex flex-wrap items-center gap-3 text-xs text-[#a7beb1]"><div className="flex items-center gap-2"><Clock3 size={14} />Cron mỗi ngày lúc 18:00</div><Link href="/history" className="inline-flex min-h-11 items-center rounded-full border border-[#709a85] px-3 text-[#d8f0df] hover:bg-[#285844]">Lịch sử sync</Link></div>
             </div>
           </div>
           <div className="hero-orbit orbit-one" /><div className="hero-orbit orbit-two" /><div className="hero-grid" />
@@ -148,6 +154,7 @@ export default function Home() {
               <CardHeader className="px-5 pb-3 pt-5"><div className="flex items-center justify-between"><div><p className="eyebrow">AI LENS</p><CardTitle className="mt-1 text-lg tracking-[-0.03em]">Nhận định tổng hợp</CardTitle></div><div className="ai-icon"><Sparkles size={16} /></div></div></CardHeader>
               <CardContent className="px-5 pb-5"><div className="rounded-2xl bg-[#f4f8f4] p-4"><div className="mb-3 flex items-center justify-between"><span className="text-xs font-semibold text-[#2b7152]">Đang chờ dữ liệu</span><span className="text-[10px] uppercase tracking-[0.14em] text-[#94a29a]">AI / 0 assets</span></div><p className="text-sm leading-6 text-[#65736b]">Sau lần đồng bộ đầu tiên, Lumen sẽ đưa ra tín hiệu <strong className="font-semibold text-[#31473a]">mua / bán / giữ</strong>, mức giá tham khảo và các rủi ro cần theo dõi.</p><div className="mt-4 flex items-center gap-2 text-[11px] text-[#8b9891]"><FileText size={13} />Không kết luận khi thiếu dữ liệu có nguồn</div></div><p className="mt-3 text-[11px] leading-5 text-[#9aa59e]">Phân tích AI chỉ mang tính tham khảo, không phải tư vấn đầu tư được cấp phép.</p></CardContent>
             </Card>
+            <PushNotificationCard />
             <Card className="dashboard-card">
               <CardHeader className="px-5 pb-3 pt-5"><div className="flex items-center justify-between"><div><p className="eyebrow">INSIGHTS FEED</p><CardTitle className="mt-1 text-lg tracking-[-0.03em]">Tin & tín hiệu</CardTitle></div><button className="text-[#789187] transition hover:text-[#285e47]" aria-label="Mở rộng"><ChevronRight size={18} /></button></div></CardHeader>
               <CardContent className="space-y-3 px-5 pb-5">{newsPlaceholders.map((item) => <div key={item.label} className="rounded-2xl border border-[#edf1ed] p-3.5"><div className="flex items-center justify-between"><span className="text-[10px] font-bold tracking-[0.16em] text-[#789187]">{item.label}</span><ArrowUpRight size={14} className="text-[#a7b6ad]" /></div><p className="mt-2 text-sm font-medium leading-5 text-[#34443a]">{item.title}</p><p className="mt-2 text-[10px] text-[#9aa59e]">{item.meta}</p></div>)}</CardContent>

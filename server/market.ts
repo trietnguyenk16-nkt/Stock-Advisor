@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { publicProcedure, router } from "./_core/trpc";
-import { getDashboardData } from "./db";
+import { getDashboardData, getEmailHistory, getSyncHistory } from "./db";
+import { syncMarket } from "./syncMarket";
 
 const tickerInput = z.object({ ticker: z.string().min(1).max(32) });
 
@@ -30,6 +31,8 @@ export const marketRouter = router({
     const payload = await getYahoo<any>(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(ticker)}&newsCount=6&quotesCount=0`);
     return (payload.news ?? []).slice(0, 6).map((item: any) => ({ title: item.title, publisher: item.publisher, link: item.link, publishedAt: item.providerPublishTime ? new Date(item.providerPublishTime * 1000).toISOString() : null, thumbnail: item.thumbnail?.resolutions?.[0]?.url ?? null }));
   }),
+  syncNow: publicProcedure.mutation(async () => syncMarket(`manual:${new Date().toISOString().slice(0, 16)}`)),
+  history: publicProcedure.query(async () => ({ syncRuns: await getSyncHistory(30), emailDeliveries: await getEmailHistory(30) })),
   analyze: publicProcedure.input(z.object({ ticker: z.string(), price: z.number().optional(), change: z.number().optional(), news: z.array(z.object({ title: z.string(), publisher: z.string().optional() })).default([]) })).mutation(async ({ input }) => {
     const response = await invokeLLM({
       messages: [

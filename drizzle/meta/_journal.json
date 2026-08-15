@@ -15,6 +15,13 @@
       "when": 1786769217648,
       "tag": "0001_melted_blazing_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1786785031344,
+      "tag": "0002_light_whizzer",
+      "breakpoints": true
     }
   ]
 }
