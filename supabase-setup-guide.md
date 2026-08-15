@@ -4,7 +4,7 @@
 
 Stock Advisor có thể dùng Vercel cho frontend, API và Vercel Cron; Supabase chỉ cung cấp PostgreSQL. Không cần bật Supabase Auth vì ứng dụng chỉ có một người dùng và backend hiện tại đã xử lý access ở phía server. Không đưa Supabase key hoặc database password vào browser.
 
-> Lưu ý quan trọng: project hiện tại đang dùng Drizzle với `mysql-core`. Supabase dùng PostgreSQL, vì vậy migration đúng phải chuyển schema sang `pg-core`, điều chỉnh kiểu dữ liệu và chạy migration mới. Chỉ thay `DATABASE_URL` là chưa đủ.
+> Runtime hiện tại đã chuyển sang Drizzle `pg-core` và driver `pg/node-postgres`; các bảng Stock Advisor nằm trong schema riêng `stock_advisor`. Trên Vercel, dùng `SUPABASE_DATABASE_URL` (pooler port `6543`, `sslmode=require`); runtime ưu tiên biến này và chỉ fallback về `DATABASE_URL`.
 
 ## Bước 1: Tạo project Supabase
 
@@ -12,9 +12,9 @@ Mở [Supabase Dashboard](https://supabase.com/dashboard), chọn **New project*
 
 Sau khi project được tạo, vào nút **Connect** trên Dashboard. Với Vercel Functions, ưu tiên **Shared Pooler transaction mode** và port `6543`; đây là chế độ dành cho các kết nối ngắn của serverless functions. Với migration hoặc `pg_dump`, dùng direct connection nếu môi trường hỗ trợ IPv6, hoặc session pooler nếu cần IPv4. Supabase mô tả các chế độ kết nối trong [tài liệu connection](https://supabase.com/docs/guides/database/connecting-to-postgres) [1].
 
-## Bước 2: Chuẩn bị DATABASE_URL
+## Bước 2: Chuẩn bị SUPABASE_DATABASE_URL
 
-Trong Vercel, đặt `DATABASE_URL` bằng connection string transaction pooler do nút **Connect** cung cấp, ví dụ:
+Trong Vercel, đặt `SUPABASE_DATABASE_URL` bằng connection string transaction pooler do nút **Connect** cung cấp, ví dụ:
 
 ```text
 postgresql://postgres.<project-ref>:<PASSWORD>@aws-<region>.pooler.supabase.com:6543/postgres?sslmode=require
@@ -22,21 +22,20 @@ postgresql://postgres.<project-ref>:<PASSWORD>@aws-<region>.pooler.supabase.com:
 
 Không tự đoán host, username hoặc region; hãy copy đúng chuỗi từ Dashboard. Nếu driver hoặc ORM dùng prepared statements, tắt prepared statements khi dùng transaction pooler vì Supabase ghi rõ transaction mode không hỗ trợ chúng [1].
 
-## Bước 3: Chuyển Drizzle từ MySQL sang PostgreSQL
+## Bước 3: Xác nhận runtime PostgreSQL
 
 Các thay đổi chính trong code là thay import:
 
 ```ts
-// hiện tại
-import { mysqlTable, int, varchar, text, timestamp } from "drizzle-orm/mysql-core";
+// runtime hiện tại
+import { bigint, pgSchema, varchar, text, timestamp, boolean } from "drizzle-orm/pg-core";
 
-// sau migration
-import { pgTable, serial, integer, varchar, text, timestamp, numeric, boolean } from "drizzle-orm/pg-core";
+const stockAdvisor = pgSchema("stock_advisor");
 ```
 
 Các mapping quan trọng là `int` sang `integer` hoặc `serial`, `mysqlEnum` sang `pgEnum` hoặc `varchar` có validation ở Zod, `timestamp` sang `timestamp({ withTimezone: true })` nếu lưu UTC, và các field cờ `0/1` sang `boolean`. Tên bảng và tên cột nên giữ ổn định để phần router không phải đổi quá nhiều.
 
-Các bảng cần chuyển gồm `tracked_assets`, `price_snapshots`, `news_items`, `asset_analyses`, `sync_runs`, `email_deliveries` và `push_subscriptions`. Nên tạo migration PostgreSQL mới thay vì chỉnh sửa migration MySQL đã áp dụng ở database cũ.
+Runtime hiện tại dùng các bảng `users`, `tracked_assets`, `price_snapshots`, `news_items`, `asset_analyses`, `sync_runs`, `email_deliveries`, `push_subscriptions` và `ai_settings`. Migration additive-only tạo các object này trong schema riêng và không sửa bảng dự án khác.
 
 ## Bước 4: Quản lý migration bằng Supabase CLI
 
@@ -67,7 +66,8 @@ Trong **Vercel → Project → Settings → Environment Variables**, thêm các 
 
 | Biến | Mục đích |
 |---|---|
-| `DATABASE_URL` | Supabase transaction pooler URL có `sslmode=require` |
+| `SUPABASE_DATABASE_URL` | Supabase transaction pooler URL, port `6543`, có `sslmode=require` |
+| `OPENAI_API_KEY` | OpenAI key server-side cho phân tích AI |
 | `CRON_SECRET` | Bảo vệ endpoint Vercel Cron |
 | `RESEND_API_KEY` | Gửi email digest |
 | `ALERT_EMAIL` | Email nhận digest |
@@ -88,7 +88,7 @@ Vì app không dùng Supabase Auth, không nên tạo policy dựa trên `auth.u
 
 ## Bước 7: Kiểm tra kết nối và deploy
 
-Sau khi migration và variables hoàn tất:
+Sau khi migration, `SUPABASE_DATABASE_URL` và các variables hoàn tất:
 
 ```bash
 pnpm check
@@ -104,7 +104,7 @@ Không dùng direct IPv6 connection trong Vercel nếu runtime không có IPv6; 
 
 ## Thứ tự migration an toàn
 
-Trước hết tạo Supabase project và kiểm tra connection string. Tiếp theo tạo schema PostgreSQL mới, chạy test trên database trống, sau đó export/transform dữ liệu cần giữ từ database cũ. Chỉ khi dashboard, manual sync, email và cron đã chạy ở Preview mới đổi `DATABASE_URL` Production. Giữ database cũ ở chế độ read-only trong thời gian quan sát để có thể đối chiếu và rollback cấu hình.
+Trước hết tạo Supabase project và kiểm tra connection string. Tiếp theo tạo schema PostgreSQL mới, chạy test trên database trống, sau đó export/transform dữ liệu cần giữ từ database cũ. Chỉ khi dashboard, manual sync, email, AI model selection và cron đã chạy ở Preview mới thêm `SUPABASE_DATABASE_URL` cho Production. Giữ database cũ ở chế độ read-only trong thời gian quan sát để có thể đối chiếu và rollback cấu hình.
 
 ## Tài liệu tham khảo
 

@@ -98,3 +98,18 @@
 - [x] Cập nhật db helpers, migrations và config để không dùng bảng public/users của project khác
 - [x] Thêm seed/ensure workspace owner và kiểm tra kết nối Supabase
 - [x] Cập nhật Vercel env/docs, chạy test/build và push migration runtime lên GitHub
+
+- [x] Thêm OpenAI API key server-side qua `OPENAI_API_KEY` và cấu hình model mặc định
+- [x] Cho phép chọn `gpt-4o-mini` hoặc `gpt-5-mini` trong dashboard và lưu lựa chọn an toàn
+- [x] Dùng model được chọn trong phân tích AI của sync pipeline, không expose API key ở frontend
+- [x] Viết test cho model config, OpenAI fallback/error handling và UI contract
+- [x] Cập nhật hướng dẫn Vercel, chạy typecheck/test/build và lưu checkpoint
+
+- [x] Thêm rollback và thông báo lỗi khi lưu model AI thất bại; xác minh persistence sau refresh
+- [x] Bổ sung test OpenAI error path, ai procedure contract và sync pipeline đọc model từ ai_settings
+- [x] Đồng bộ các guide Supabase còn lại với ai_settings và OPENAI_API_KEY; tạo checkpoint OpenAI mới
+
+- [x] Bổ sung Vitest cho `appRouter.ai.config` và `appRouter.ai.setModel`
+- [x] Bổ sung test xác nhận sync pipeline lấy model từ `ai_settings` và truyền vào OpenAI helper
+
+- [x] Mock OpenAI helper trong syncMarket test để xác nhận model từ ai_settings được truyền đúng khi phân tích tài sản

@@ -1,24 +1,19 @@
-import { invokeLLM } from "./_core/llm";
-import { getTrackedAssets, createSyncRun, finishSyncRun, getEmailDelivery, insertAssetAnalysis, insertNewsItem, insertPriceSnapshot, recordEmailDelivery } from "./db";
+import { getAiModel, getTrackedAssets, createSyncRun, finishSyncRun, getEmailDelivery, insertAssetAnalysis, insertNewsItem, insertPriceSnapshot, recordEmailDelivery } from "./db";
 import { fetchVietnamNews, fetchVietnamQuote } from "./vietnamProviders";
 import { sendPushNotification } from "./push";
+import { analyzeAssetWithOpenAI, getConfiguredAiModel } from "./openai";
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character] ?? character);
 }
 
-async function createAnalysis(asset: { ticker: string; displayName: string; assetType: string }, quote: { price?: number; changePercent?: number }, news: { title: string; sourceName: string }[]) {
+export async function resolveSyncAiModel() {
+  return getConfiguredAiModel(await getAiModel("owner"));
+}
+
+async function createAnalysis(model: Parameters<typeof analyzeAssetWithOpenAI>[0], asset: { ticker: string; displayName: string; assetType: string }, quote: { price?: number; changePercent?: number }, news: { title: string; sourceName: string }[]) {
   if (quote.price === undefined) return null;
-  const response = await invokeLLM({
-    messages: [
-      { role: "system", content: "Bạn là trợ lý phân tích tài sản Việt Nam. Hãy thận trọng, không khẳng định chắc chắn, và chỉ dùng dữ liệu được cung cấp. Trả JSON đúng schema." },
-      { role: "user", content: JSON.stringify({ asset, quote, news, instruction: "Chọn BUY, SELL hoặc HOLD. Phải nêu referencePrice và targetPrice là số cụ thể. Nếu thiếu cơ sở, chọn HOLD và nêu rõ rủi ro." }) },
-    ],
-    response_format: { type: "json_schema", json_schema: { name: "scheduled_asset_analysis", strict: true, schema: { type: "object", properties: { signal: { type: "string", enum: ["BUY", "SELL", "HOLD"] }, summary: { type: "string" }, referencePrice: { type: "number" }, targetPrice: { type: "number" }, risk: { type: "string" }, confidence: { type: "number" } }, required: ["signal", "summary", "referencePrice", "targetPrice", "risk", "confidence"], additionalProperties: false } } },
-  });
-  const content = response.choices?.[0]?.message?.content;
-  if (typeof content !== "string") return null;
-  return JSON.parse(content) as { signal: "BUY" | "SELL" | "HOLD"; summary: string; referencePrice: number; targetPrice: number; risk: string; confidence: number };
+  return analyzeAssetWithOpenAI(model, { asset, quote, news });
 }
 
 export async function sendDigest(runKey: string, lines: string[]) {
@@ -46,6 +41,7 @@ export async function syncMarket(runKey: string) {
   const claimed = await createSyncRun(runKey, startedAt);
   if (!claimed?.claimed) return { skipped: true, status: claimed?.run?.status ?? "running", runKey };
   const assets = await getTrackedAssets("owner");
+  const aiModel = await resolveSyncAiModel();
   let succeeded = 0;
   const digestLines: string[] = [];
   const errors: string[] = [];
@@ -55,7 +51,7 @@ export async function syncMarket(runKey: string) {
       await insertPriceSnapshot({ assetId: asset.id, runKey, price: quote.price?.toString(), bid: quote.bid?.toString(), ask: quote.ask?.toString(), changePercent: quote.changePercent?.toString(), asOf: quote.asOf, sourceName: quote.sourceName, sourceUrl: quote.sourceUrl, freshness: quote.freshness, warning: quote.warning });
       const news = await fetchVietnamNews(asset);
       for (const item of news) await insertNewsItem({ assetId: asset.id, fingerprint: item.fingerprint, title: item.title, sourceName: item.sourceName, sourceUrl: item.sourceUrl, snippet: item.snippet, publishedAt: item.publishedAt, fetchedAt: Date.now() });
-      const analysis = await createAnalysis(asset, quote, news);
+      const analysis = await createAnalysis(aiModel, asset, quote, news);
       if (analysis) await insertAssetAnalysis({ assetId: asset.id, runKey, signal: analysis.signal, summary: analysis.summary, referencePrice: analysis.referencePrice.toString(), targetPrice: analysis.targetPrice.toString(), risk: analysis.risk, confidence: analysis.confidence.toString(), asOf: Date.now() });
       digestLines.push(`<section style="border:1px solid #e5ece7;padding:14px;margin:12px 0;border-radius:10px"><b>${escapeHtml(asset.ticker)} · ${escapeHtml(asset.displayName)}</b><p>Giá/NAV: ${quote.price ?? "—"} · Biến động: ${quote.changePercent ?? "—"}% · ${escapeHtml(quote.sourceName)}</p>${analysis ? `<p><b>${analysis.signal}</b> · Giá tham chiếu ${analysis.referencePrice} · Mục tiêu ${analysis.targetPrice}<br/>${escapeHtml(analysis.summary)}<br/><small>Rủi ro: ${escapeHtml(analysis.risk)}</small></p>` : "<p>Chưa đủ dữ liệu để phân tích AI.</p>"}</section>`);
       succeeded += 1;

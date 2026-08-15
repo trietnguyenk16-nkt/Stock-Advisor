@@ -91,6 +91,13 @@ create table if not exists stock_advisor.email_deliveries (
   created_at timestamptz not null default now()
 );
 
+create table if not exists stock_advisor.ai_settings (
+  id bigint generated always as identity primary key,
+  workspace_key varchar(96) not null default 'owner' unique,
+  model varchar(64) not null default 'gpt-4o-mini',
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists stock_advisor.users (
   id bigint generated always as identity primary key,
   open_id varchar(64) not null unique,

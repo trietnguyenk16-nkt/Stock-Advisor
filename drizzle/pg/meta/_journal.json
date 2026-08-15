@@ -8,6 +8,13 @@
       "when": 1786808127138,
       "tag": "0000_brave_nightmare",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786809176791,
+      "tag": "0001_short_salo",
+      "breakpoints": true
     }
   ]
 }

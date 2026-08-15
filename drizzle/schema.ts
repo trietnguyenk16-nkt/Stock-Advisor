@@ -108,6 +108,13 @@ export const pushSubscriptions = stockAdvisor.table("push_subscriptions", {
   workspaceEndpointUnique: uniqueIndex("push_subscriptions_workspace_endpoint_unique").on(table.workspaceKey, table.endpoint),
 }));
 
+export const aiSettings = stockAdvisor.table("ai_settings", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  workspaceKey: varchar("workspace_key", { length: 96 }).notNull().default("owner").unique(),
+  model: varchar("model", { length: 64 }).notNull().default("gpt-4o-mini"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const emailDeliveries = stockAdvisor.table("email_deliveries", {
   id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
   runKey: varchar("run_key", { length: 96 }).notNull().unique(),

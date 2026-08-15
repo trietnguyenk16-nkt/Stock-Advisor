@@ -3,10 +3,11 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
-import { deletePushSubscription, getPushSubscriptions, upsertPushSubscription } from "./db";
+import { deletePushSubscription, getAiModel, getPushSubscriptions, setAiModel, upsertPushSubscription } from "./db";
 import { getPushConfig } from "./push";
 import { marketRouter } from "./market";
 import { addTrackedAsset, deactivateTrackedAsset, getTrackedAssets } from "./db";
+import { AI_MODELS, getConfiguredAiModel } from "./openai";
 
 export const appRouter = router({
   system: systemRouter,
@@ -23,6 +24,10 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+  }),
+  ai: router({
+    config: publicProcedure.query(async () => ({ enabled: Boolean(process.env.OPENAI_API_KEY), model: getConfiguredAiModel(await getAiModel()), models: AI_MODELS })),
+    setModel: publicProcedure.input(z.object({ model: z.enum(["gpt-4o-mini", "gpt-5-mini"]) })).mutation(async ({ input }) => ({ ok: Boolean(await setAiModel(input.model)), model: input.model })),
   }),
   push: router({
     config: publicProcedure.query(() => getPushConfig()),

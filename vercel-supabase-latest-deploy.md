@@ -81,13 +81,14 @@ Vào **Project → Settings → Environment Variables** và thêm cho **Producti
 | `SUPABASE_DATABASE_URL` | Supabase pooler URL, port `6543`, có `sslmode=require`; biến database chính của runtime PostgreSQL |
 | `CRON_SECRET` | Chuỗi ngẫu nhiên dài, dùng để bảo vệ `/api/cron/sync-market` |
 | `RESEND_API_KEY` | Resend API key để gửi email |
+| `OPENAI_API_KEY` | OpenAI API key dùng server-side cho phân tích AI; không đặt trong `VITE_*` |
 | `ALERT_EMAIL` | Địa chỉ email nhận digest |
 | `VAPID_PUBLIC_KEY` | Public VAPID key |
 | `VAPID_PRIVATE_KEY` | Private VAPID key, chỉ server-side |
 | `VAPID_SUBJECT` | Ví dụ `mailto:you@example.com` |
 | `JWT_SECRET` | Secret runtime hiện tại nếu scaffold còn cần |
 | `BUILT_IN_FORGE_API_URL` | Endpoint AI/runtime hiện tại |
-| `BUILT_IN_FORGE_API_KEY` | API key server-side hiện tại |
+| `BUILT_IN_FORGE_API_KEY` | API key server-side hiện tại nếu vẫn dùng các tính năng Manus khác |
 
 Không đặt `VAPID_PRIVATE_KEY`, database password hoặc service-role key trong `VITE_*`, source code, `vercel.json`, GitHub hoặc localStorage.
 
@@ -129,6 +130,7 @@ Không dùng `DATABASE_URL` của MySQL/TiDB cho bản PostgreSQL này. Nếu Pr
 | Đồng bộ thủ công | Nút trả trạng thái running/success/partial/failed |
 | `/history` | Hiển thị sync runs và email delivery gần nhất |
 | Email | Resend nhận được digest hoặc delivery ghi rõ skipped/failed |
+| AI model | Dashboard cho phép chọn `gpt-4o-mini` hoặc `gpt-5-mini`; lựa chọn lưu trong `stock_advisor.ai_settings` |
 | Push | Browser xin quyền; sau khi bật có subscription; nút tắt hủy subscription |
 | Cron | Vercel hiển thị lịch `0 11 * * *` |
 | Database | Chỉ có object mới dưới `stock_advisor`; public tables không bị sửa |

@@ -2,7 +2,7 @@
 
 ## Nguyên tắc an toàn
 
-Migration này tạo một schema riêng có tên `stock_advisor`. Nó không sử dụng các bảng trong `public`, không tạo lại bảng `users`, không `ALTER` bảng hiện hữu và không xóa hoặc cập nhật dữ liệu của project khác. Toàn bộ bảng và index của Stock Advisor được đặt trong namespace riêng để giảm rủi ro collision.
+Migration này tạo một schema riêng có tên `stock_advisor`. Nó không sử dụng các bảng trong `public`, tạo `stock_advisor.users` và `stock_advisor.ai_settings` cho runtime riêng, không `ALTER` bảng hiện hữu và không xóa hoặc cập nhật dữ liệu của project khác. Toàn bộ bảng và index của Stock Advisor được đặt trong namespace riêng để giảm rủi ro collision.
 
 > Không chạy migration này bằng `webdev_execute_sql` trên database của project hiện tại nếu `DATABASE_URL` chưa trỏ tới Supabase đích. Hãy chạy trong Supabase SQL Editor hoặc bằng Supabase CLI đã link đúng project.
 
@@ -10,6 +10,8 @@ Migration này tạo một schema riêng có tên `stock_advisor`. Nó không s�
 
 | Object | Vai trò |
 |---|---|
+| `stock_advisor.users` | User/owner runtime của template |
+| `stock_advisor.ai_settings` | Model AI được chọn theo workspace |
 | `stock_advisor.tracked_assets` | Watchlist tài sản Việt Nam |
 | `stock_advisor.sync_runs` | Trạng thái từng lần đồng bộ |
 | `stock_advisor.price_snapshots` | Snapshot giá/NAV và timestamp |
@@ -105,9 +107,9 @@ Rollback không được chạy tự động. File `20260815_stock_advisor_rollb
 
 ## Cấu hình ứng dụng sau migration
 
-Ứng dụng cần được chuyển từ Drizzle `mysql-core` sang `pg-core` và trỏ các table vào schema `stock_advisor`; nếu chưa đổi code, việc tạo database object riêng sẽ thành công nhưng app vẫn tìm các bảng MySQL/public cũ. Database URL cho Vercel nên dùng Supabase transaction pooler port `6543` với SSL, theo hướng dẫn kết nối Supabase [2].
+Runtime hiện tại đã dùng Drizzle `pg-core`/`pg`, trỏ các bảng vào schema `stock_advisor`, và dùng `ai_settings` để lưu model `gpt-4o-mini` hoặc `gpt-5-mini`. Database URL cho Vercel dùng biến `SUPABASE_DATABASE_URL`, transaction pooler port `6543` với SSL, theo hướng dẫn kết nối Supabase [2].
 
-Không đưa database password, Supabase service-role key hoặc VAPID private key vào frontend/GitHub. Chỉ thêm `DATABASE_URL` trong Vercel Environment Variables cho Production/Preview phù hợp.
+Không đưa database password, Supabase service-role key, `OPENAI_API_KEY` hoặc VAPID private key vào frontend/GitHub. Thêm `SUPABASE_DATABASE_URL` và `OPENAI_API_KEY` trong Vercel Environment Variables cho Production/Preview phù hợp.
 
 ## Tài liệu tham khảo
 

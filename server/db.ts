@@ -2,7 +2,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { ENV } from "./_core/env";
-import { InsertUser, assetAnalyses, emailDeliveries, newsItems, priceSnapshots, pushSubscriptions, syncRuns, trackedAssets, users } from "../drizzle/schema";
+import { InsertUser, aiSettings, assetAnalyses, emailDeliveries, newsItems, priceSnapshots, pushSubscriptions, syncRuns, trackedAssets, users } from "../drizzle/schema";
 
 type Database = ReturnType<typeof drizzle>;
 let _pool: Pool | null = null;
@@ -43,6 +43,21 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   if (!db) return;
   const values: InsertUser = { openId: user.openId, name: user.name ?? null, email: user.email ?? null, loginMethod: user.loginMethod ?? null, role: user.role ?? (user.openId === ENV.ownerOpenId ? "admin" : "user"), lastSignedIn: user.lastSignedIn ?? new Date() };
   await db.insert(users).values(values).onConflictDoUpdate({ target: users.openId, set: { name: values.name, email: values.email, loginMethod: values.loginMethod, role: values.role, lastSignedIn: values.lastSignedIn, updatedAt: new Date() } });
+}
+
+export async function getAiModel(workspaceKey = "owner") {
+  const db = await getDb();
+  if (!db) return "gpt-4o-mini";
+  const rows = await db.select().from(aiSettings).where(eq(aiSettings.workspaceKey, workspaceKey)).limit(1);
+  return rows[0]?.model ?? "gpt-4o-mini";
+}
+
+export async function setAiModel(model: string, workspaceKey = "owner") {
+  const db = await getDb();
+  if (!db) return undefined;
+  await db.insert(aiSettings).values({ workspaceKey, model, updatedAt: new Date() }).onConflictDoUpdate({ target: aiSettings.workspaceKey, set: { model, updatedAt: new Date() } });
+  const rows = await db.select().from(aiSettings).where(eq(aiSettings.workspaceKey, workspaceKey)).limit(1);
+  return rows[0];
 }
 
 export async function getUserByOpenId(openId: string) {
