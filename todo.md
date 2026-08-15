@@ -92,3 +92,9 @@
 - [x] Hướng dẫn chạy migration additive-only trong Supabase database dùng chung
 - [x] Hướng dẫn cấu hình toàn bộ Vercel Environment Variables cho database, cron, email và push
 - [x] Hướng dẫn kiểm tra Vercel Cron 11:00 UTC, manual sync, history và Push Notification
+
+- [x] Chuyển database driver từ mysql2 sang PostgreSQL cho Supabase pooler
+- [x] Chuyển Drizzle schema từ mysql-core sang pg-core và namespace stock_advisor
+- [x] Cập nhật db helpers, migrations và config để không dùng bảng public/users của project khác
+- [x] Thêm seed/ensure workspace owner và kiểm tra kết nối Supabase
+- [x] Cập nhật Vercel env/docs, chạy test/build và push migration runtime lên GitHub

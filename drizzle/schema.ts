@@ -1,120 +1,122 @@
-import { bigint, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar, decimal } from "drizzle-orm/mysql-core";
+import { bigint, boolean, decimal, index, integer, pgSchema, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 
-export const users = mysqlTable("users", {
-  id: int("id").autoincrement().primaryKey(),
-  openId: varchar("openId", { length: 64 }).notNull().unique(),
+export const stockAdvisor = pgSchema("stock_advisor");
+
+export const users = stockAdvisor.table("users", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  openId: varchar("open_id", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
-  loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+  loginMethod: varchar("login_method", { length: 64 }),
+  role: varchar("role", { length: 16 }).default("user").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  lastSignedIn: timestamp("last_signed_in", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const trackedAssets = mysqlTable("tracked_assets", {
-  id: int("id").autoincrement().primaryKey(),
-  workspaceKey: varchar("workspaceKey", { length: 96 }).notNull().default("owner"),
+export const trackedAssets = stockAdvisor.table("tracked_assets", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  workspaceKey: varchar("workspace_key", { length: 96 }).notNull().default("owner"),
   ticker: varchar("ticker", { length: 32 }).notNull(),
-  displayName: varchar("displayName", { length: 255 }).notNull(),
-  assetType: mysqlEnum("assetType", ["equity", "fund", "gold"]).notNull(),
+  displayName: varchar("display_name", { length: 255 }).notNull(),
+  assetType: varchar("asset_type", { length: 16 }).notNull(),
   exchange: varchar("exchange", { length: 16 }),
-  providerCode: varchar("providerCode", { length: 64 }).notNull(),
+  providerCode: varchar("provider_code", { length: 64 }).notNull(),
   currency: varchar("currency", { length: 8 }).notNull().default("VND"),
   unit: varchar("unit", { length: 32 }).notNull().default("share"),
-  isActive: int("isActive").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   workspaceTickerUnique: uniqueIndex("tracked_assets_workspace_ticker_unique").on(table.workspaceKey, table.ticker),
   workspaceActiveIndex: index("tracked_assets_workspace_active_index").on(table.workspaceKey, table.isActive),
 }));
 
-export const priceSnapshots = mysqlTable("price_snapshots", {
-  id: int("id").autoincrement().primaryKey(),
-  assetId: int("assetId").notNull(),
-  runKey: varchar("runKey", { length: 96 }).notNull(),
+export const priceSnapshots = stockAdvisor.table("price_snapshots", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  assetId: bigint("asset_id", { mode: "number" }).notNull().references(() => trackedAssets.id, { onDelete: "cascade" }),
+  runKey: varchar("run_key", { length: 96 }).notNull(),
   price: decimal("price", { precision: 20, scale: 6 }),
   bid: decimal("bid", { precision: 20, scale: 6 }),
   ask: decimal("ask", { precision: 20, scale: 6 }),
-  changePercent: decimal("changePercent", { precision: 12, scale: 6 }),
-  asOf: bigint("asOf", { mode: "number" }).notNull(),
-  sourceName: varchar("sourceName", { length: 128 }).notNull(),
-  sourceUrl: varchar("sourceUrl", { length: 512 }),
+  changePercent: decimal("change_percent", { precision: 12, scale: 6 }),
+  asOf: bigint("as_of", { mode: "number" }).notNull(),
+  sourceName: varchar("source_name", { length: 128 }).notNull(),
+  sourceUrl: varchar("source_url", { length: 1024 }),
   freshness: varchar("freshness", { length: 32 }).notNull().default("unknown"),
   warning: text("warning"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   runAssetUnique: uniqueIndex("price_snapshots_run_asset_unique").on(table.runKey, table.assetId),
   assetAsOfIndex: index("price_snapshots_asset_asof_index").on(table.assetId, table.asOf),
 }));
 
-export const newsItems = mysqlTable("news_items", {
-  id: int("id").autoincrement().primaryKey(),
-  assetId: int("assetId").notNull(),
+export const newsItems = stockAdvisor.table("news_items", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  assetId: bigint("asset_id", { mode: "number" }).notNull().references(() => trackedAssets.id, { onDelete: "cascade" }),
   fingerprint: varchar("fingerprint", { length: 128 }).notNull(),
   title: varchar("title", { length: 512 }).notNull(),
-  sourceName: varchar("sourceName", { length: 128 }).notNull(),
-  sourceUrl: varchar("sourceUrl", { length: 1024 }).notNull(),
+  sourceName: varchar("source_name", { length: 128 }).notNull(),
+  sourceUrl: varchar("source_url", { length: 1024 }).notNull(),
   snippet: text("snippet"),
-  publishedAt: bigint("publishedAt", { mode: "number" }),
-  fetchedAt: bigint("fetchedAt", { mode: "number" }).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  publishedAt: bigint("published_at", { mode: "number" }),
+  fetchedAt: bigint("fetched_at", { mode: "number" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   assetFingerprintUnique: uniqueIndex("news_items_asset_fingerprint_unique").on(table.assetId, table.fingerprint),
   assetPublishedIndex: index("news_items_asset_published_index").on(table.assetId, table.publishedAt),
 }));
 
-export const assetAnalyses = mysqlTable("asset_analyses", {
-  id: int("id").autoincrement().primaryKey(),
-  assetId: int("assetId").notNull(),
-  runKey: varchar("runKey", { length: 96 }).notNull(),
-  signal: mysqlEnum("signal", ["BUY", "SELL", "HOLD"]).notNull(),
+export const assetAnalyses = stockAdvisor.table("asset_analyses", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  assetId: bigint("asset_id", { mode: "number" }).notNull().references(() => trackedAssets.id, { onDelete: "cascade" }),
+  runKey: varchar("run_key", { length: 96 }).notNull(),
+  signal: varchar("signal", { length: 8 }).notNull(),
   summary: text("summary").notNull(),
-  referencePrice: decimal("referencePrice", { precision: 20, scale: 6 }),
-  targetPrice: decimal("targetPrice", { precision: 20, scale: 6 }),
+  referencePrice: decimal("reference_price", { precision: 20, scale: 6 }),
+  targetPrice: decimal("target_price", { precision: 20, scale: 6 }),
   risk: text("risk").notNull(),
   confidence: decimal("confidence", { precision: 6, scale: 4 }),
-  asOf: bigint("asOf", { mode: "number" }).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  asOf: bigint("as_of", { mode: "number" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   runAssetUnique: uniqueIndex("asset_analyses_run_asset_unique").on(table.runKey, table.assetId),
 }));
 
-export const syncRuns = mysqlTable("sync_runs", {
-  id: int("id").autoincrement().primaryKey(),
-  runKey: varchar("runKey", { length: 96 }).notNull().unique(),
-  status: mysqlEnum("status", ["running", "success", "partial", "failed"]).notNull(),
-  startedAt: bigint("startedAt", { mode: "number" }).notNull(),
-  finishedAt: bigint("finishedAt", { mode: "number" }),
-  assetsProcessed: int("assetsProcessed").notNull().default(0),
-  assetsSucceeded: int("assetsSucceeded").notNull().default(0),
-  errorMessage: text("errorMessage"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+export const syncRuns = stockAdvisor.table("sync_runs", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  runKey: varchar("run_key", { length: 96 }).notNull().unique(),
+  status: varchar("status", { length: 16 }).notNull(),
+  startedAt: bigint("started_at", { mode: "number" }).notNull(),
+  finishedAt: bigint("finished_at", { mode: "number" }),
+  assetsProcessed: integer("assets_processed").notNull().default(0),
+  assetsSucceeded: integer("assets_succeeded").notNull().default(0),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const pushSubscriptions = mysqlTable("push_subscriptions", {
-  id: int("id").autoincrement().primaryKey(),
-  workspaceKey: varchar("workspaceKey", { length: 96 }).notNull().default("owner"),
+export const pushSubscriptions = stockAdvisor.table("push_subscriptions", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  workspaceKey: varchar("workspace_key", { length: 96 }).notNull().default("owner"),
   endpoint: varchar("endpoint", { length: 2048 }).notNull(),
   p256dh: text("p256dh").notNull(),
   auth: text("auth").notNull(),
-  userAgent: varchar("userAgent", { length: 512 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  userAgent: varchar("user_agent", { length: 512 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   workspaceEndpointUnique: uniqueIndex("push_subscriptions_workspace_endpoint_unique").on(table.workspaceKey, table.endpoint),
 }));
 
-export const emailDeliveries = mysqlTable("email_deliveries", {
-  id: int("id").autoincrement().primaryKey(),
-  runKey: varchar("runKey", { length: 96 }).notNull().unique(),
+export const emailDeliveries = stockAdvisor.table("email_deliveries", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  runKey: varchar("run_key", { length: 96 }).notNull().unique(),
   recipient: varchar("recipient", { length: 320 }).notNull(),
-  status: mysqlEnum("status", ["sent", "skipped", "failed"]).notNull(),
-  providerMessageId: varchar("providerMessageId", { length: 255 }),
-  errorMessage: text("errorMessage"),
-  sentAt: bigint("sentAt", { mode: "number" }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  status: varchar("status", { length: 16 }).notNull(),
+  providerMessageId: varchar("provider_message_id", { length: 255 }),
+  errorMessage: text("error_message"),
+  sentAt: bigint("sent_at", { mode: "number" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type User = typeof users.$inferSelect;

@@ -2,16 +2,9 @@
 
 ## Cảnh báo trước khi deploy
 
-Checkpoint mới nhất `8d90fda1` đã có migration SQL additive-only trong schema `stock_advisor`, nhưng runtime hiện tại của project vẫn được scaffold bằng Drizzle/MySQL. Vì vậy, **không đổi `DATABASE_URL` sang Supabase PostgreSQL ngay nếu chưa chuyển runtime sang PostgreSQL**. Việc chạy SQL tạo bảng thành công không tự làm `mysql2`/`mysql-core` đọc được các bảng trong schema `stock_advisor`.
+Runtime hiện tại đã được chuyển hoàn toàn sang Drizzle PostgreSQL (`pg-core`) và driver `pg`, với toàn bộ bảng Stock Advisor nằm trong schema riêng `stock_advisor`. Migration additive-only cũng tạo `stock_advisor.users` để tương thích với lớp OAuth của template; không có thao tác `DROP`, `ALTER`, `TRUNCATE`, `UPDATE` hoặc `DELETE` trên bảng dự án khác.
 
-Bạn có hai lựa chọn:
-
-| Lựa chọn | Khi dùng | Ghi chú |
-|---|---|---|
-| Deploy Vercel với database hiện tại | Muốn đưa bản mới lên production ngay | Giữ `DATABASE_URL` hiện tại; Push/cron vẫn cần cấu hình secrets. |
-| Deploy Vercel + Supabase | Muốn dùng database chung Supabase | Chạy migration additive-only, sau đó chuyển Drizzle sang `pg-core` và trỏ table vào `stock_advisor` trước khi đổi Production `DATABASE_URL`. |
-
-Các bước dưới đây là quy trình an toàn cho lựa chọn thứ hai.
+Ứng dụng ưu tiên `SUPABASE_DATABASE_URL`; biến `DATABASE_URL` chỉ là fallback tương thích với môi trường WebDev cũ. Trên Vercel, hãy khai báo `SUPABASE_DATABASE_URL` cho Production và Preview cùng connection string Supabase pooler port `6543`, kèm `sslmode=require`.
 
 ## 1. Kết nối GitHub với Vercel
 
@@ -43,7 +36,7 @@ Không commit file dump hoặc connection string vào GitHub. Nếu có thể, r
 
 ## 3. Chạy migration additive-only
 
-Mở file `supabase/migrations/20260815_stock_advisor_additive.sql` từ branch `main` và chạy trong **Supabase SQL Editor** của đúng project dùng chung. File chỉ tạo schema `stock_advisor`, các table và index mới. Nó không dùng `DROP`, `ALTER`, `TRUNCATE`, `UPDATE` hoặc `DELETE` trên object hiện hữu.
+Mở file `supabase/migrations/20260815_stock_advisor_additive.sql` từ branch `main` và chạy trong **Supabase SQL Editor** của đúng project dùng chung. File chỉ tạo schema `stock_advisor`, các table và index mới, bao gồm `users`. Nó không dùng `DROP`, `ALTER`, `TRUNCATE`, `UPDATE` hoặc `DELETE` trên object hiện hữu.
 
 Sau khi chạy, kiểm tra:
 
@@ -59,11 +52,11 @@ where schemaname = 'stock_advisor'
 order by tablename, indexname;
 ```
 
-Kết quả cần có `tracked_assets`, `sync_runs`, `price_snapshots`, `news_items`, `asset_analyses`, `email_deliveries` và `push_subscriptions`. Đối chiếu thêm các bảng `public` của project cũ để bảo đảm chúng vẫn tồn tại.
+Kết quả cần có `users`, `tracked_assets`, `sync_runs`, `price_snapshots`, `news_items`, `asset_analyses`, `email_deliveries` và `push_subscriptions`. Đối chiếu thêm các bảng `public` của project cũ để bảo đảm chúng vẫn tồn tại.
 
 ## 4. Chuyển runtime sang PostgreSQL trước Production
 
-Đây là bước kỹ thuật bắt buộc nếu muốn app đọc schema `stock_advisor`. Trong code, thay Drizzle `mysql-core` bằng `drizzle-orm/pg-core`, thay driver `mysql2` bằng driver PostgreSQL phù hợp, đổi enum/identity/boolean theo PostgreSQL và khai báo các bảng dưới schema `stock_advisor`.
+Bước này đã hoàn tất trong source hiện tại: Drizzle dùng `drizzle-orm/pg-core`, runtime dùng `pg`, các identity/boolean/timestamp dùng kiểu PostgreSQL và mọi bảng đều khai báo dưới `stock_advisor`. Không còn import `mysql2` hoặc `mysql-core` trong source runtime.
 
 Không thực hiện chuyển đổi bằng cách sửa trực tiếp các bảng project khác. Tạo một branch Preview hoặc database Supabase project tạm thời để kiểm tra:
 
@@ -77,7 +70,7 @@ schema/table runtime -> stock_advisor.email_deliveries
 schema/table runtime -> stock_advisor.push_subscriptions
 ```
 
-Chỉ đổi Production `DATABASE_URL` sau khi dashboard, manual sync, history và cron đã đọc/ghi thành công qua PostgreSQL.
+Sau khi dashboard, manual sync, history và cron đã đọc/ghi thành công qua PostgreSQL, redeploy Vercel với `SUPABASE_DATABASE_URL`. Do `DATABASE_URL` là built-in secret của template, không cần sửa nó; runtime đã ưu tiên biến Supabase riêng.
 
 ## 5. Thêm Environment Variables trên Vercel
 
@@ -85,7 +78,7 @@ Vào **Project → Settings → Environment Variables** và thêm cho **Producti
 
 | Variable | Giá trị |
 |---|---|
-| `DATABASE_URL` | Supabase pooler URL, thường port `6543`, có `sslmode=require`; chỉ dùng sau khi runtime đã chuyển sang PostgreSQL |
+| `SUPABASE_DATABASE_URL` | Supabase pooler URL, port `6543`, có `sslmode=require`; biến database chính của runtime PostgreSQL |
 | `CRON_SECRET` | Chuỗi ngẫu nhiên dài, dùng để bảo vệ `/api/cron/sync-market` |
 | `RESEND_API_KEY` | Resend API key để gửi email |
 | `ALERT_EMAIL` | Địa chỉ email nhận digest |
@@ -123,9 +116,9 @@ curl -i -H "Authorization: Bearer $CRON_SECRET" https://<your-domain>/api/cron/s
 
 ## 7. Thứ tự deploy an toàn
 
-Trước hết push code lên `main` và tạo Vercel Preview. Tiếp theo chạy migration trên Supabase, kiểm tra object và backup. Sau đó deploy runtime PostgreSQL ở Preview, chạy manual sync và mở `/history`. Khi mọi thứ ổn định, thêm Production Environment Variables, redeploy Production và kiểm tra Cron Jobs.
+Trước hết push code PostgreSQL lên `main` và tạo Vercel Preview. Tiếp theo backup và chạy migration trên Supabase, kiểm tra object. Sau đó khai báo `SUPABASE_DATABASE_URL` ở Preview, chạy manual sync và mở `/history`. Khi mọi thứ ổn định, thêm cùng biến vào Production, redeploy và kiểm tra Cron Jobs.
 
-Nếu chưa hoàn tất chuyển Drizzle sang PostgreSQL, hãy giữ `DATABASE_URL` hiện tại và chỉ deploy các thay đổi frontend/backend không phụ thuộc Supabase. Đừng trỏ MySQL driver vào Supabase vì sẽ gây lỗi kết nối hoặc lỗi schema trong production.
+Không dùng `DATABASE_URL` của MySQL/TiDB cho bản PostgreSQL này. Nếu Preview chưa có `SUPABASE_DATABASE_URL`, app sẽ không kết nối database và các thao tác dữ liệu sẽ trả trạng thái rỗng/lỗi; hãy cấu hình secret trước khi kiểm thử production.
 
 ## 8. Checklist production
 
