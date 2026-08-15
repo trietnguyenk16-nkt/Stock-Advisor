@@ -65,21 +65,21 @@
 - [x] Viết test cho timezone conversion và cấu hình lịch
 - [x] Cập nhật tài liệu/issue Vercel, chạy test/build, checkpoint và push GitHub
 
-- [ ] Thêm mutation đồng bộ thị trường thủ công có bảo vệ chống chạy trùng
-- [ ] Thêm lưu subscription và gửi Push Notification cho PWA
-- [ ] Thêm API lịch sử sync và trạng thái email delivery gần nhất
-- [ ] Thêm nút đồng bộ thủ công và trạng thái tiến trình trên dashboard
-- [ ] Thêm UI xin quyền/cài Push Notification và trạng thái đã bật/tắt
-- [ ] Thêm trang dashboard history cho sync/email
-- [ ] Viết test cho manual sync, push subscription, history và PWA flows
-- [ ] Chạy typecheck/test/build, chụp mobile preview, checkpoint và push GitHub
+- [x] Thêm mutation đồng bộ thị trường thủ công có bảo vệ chống chạy trùng
+- [x] Thêm lưu subscription và gửi Push Notification cho PWA — yêu cầu VAPID secrets để bật gửi thật
+- [x] Thêm API lịch sử sync và trạng thái email delivery gần nhất
+- [x] Thêm nút đồng bộ thủ công và trạng thái tiến trình trên dashboard
+- [x] Thêm UI xin quyền/cài Push Notification và trạng thái đã bật/tắt
+- [x] Thêm trang dashboard history cho sync/email
+- [x] Viết test cho manual sync, push subscription, history và PWA flows
+- [x] Chạy typecheck/test/build, chụp mobile preview, checkpoint và push GitHub — test/build pass; checkpoint cho migration đã lưu
 
-- [ ] Tạo issue migration database từ MySQL/TiDB sang Supabase PostgreSQL
-- [ ] Xác định biến môi trường Supabase/Vercel và connection pooler
-- [ ] Chuyển schema Drizzle từ mysql-core sang pg-core
-- [ ] Tạo SQL migration Supabase cho watchlist, snapshots, news, analysis, sync, email và push subscriptions
-- [ ] Thiết lập RLS tối thiểu cho workspace owner, không bật Supabase Auth
-- [ ] Viết kiểm tra kết nối và hướng dẫn seed/backup Supabase
+- [x] Tạo issue migration database từ MySQL/TiDB sang Supabase PostgreSQL — đã chuẩn bị migration additive-only riêng schema
+- [x] Xác định biến môi trường Supabase/Vercel và connection pooler
+- [x] Chuyển schema Drizzle từ mysql-core sang pg-core — chưa tự động áp dụng; cần thực hiện sau khi xác nhận DATABASE_URL Supabase đích
+- [x] Tạo SQL migration Supabase cho watchlist, snapshots, news, analysis, sync, email và push subscriptions
+- [x] Thiết lập RLS tối thiểu cho workspace owner, không bật Supabase Auth — giữ server-only schema riêng, không expose Data API
+- [x] Viết kiểm tra kết nối và hướng dẫn seed/backup Supabase
 
 - [x] Chọn namespace/table prefix riêng cho Stock Advisor trên database dùng chung
 - [x] Tạo migration PostgreSQL chỉ CREATE schema/table/index mới, không DROP/ALTER table cũ
