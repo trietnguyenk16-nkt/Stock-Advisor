@@ -343,3 +343,37 @@ SYNC_TASK_UID=oracle-vps-market-digest
 ```
 
 CLI sẽ tạo runKey dạng `vps:oracle-vps-market-digest:<two-hour-bucket>`. Nếu chỉ có một scheduler, có thể bỏ biến này và CLI sẽ dùng `vps:<two-hour-bucket>`. `SYNC_RUN_KEY` vẫn được hỗ trợ để chạy thủ công một run cụ thể.
+
+## Phương án C — Vercel Cron, mặc định 18:00 giờ Việt Nam
+
+Nếu chọn Vercel, file cấu hình lịch duy nhất cần chỉnh là `vercel.json` ở thư mục gốc. Lịch hiện tại là:
+
+```json
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [{
+    "path": "/api/cron/sync-market",
+    "schedule": "0 11 * * *"
+  }]
+}
+```
+
+Vercel Cron dùng UTC. Vì Việt Nam là UTC+7, `0 11 * * *` nghĩa là **11:00 UTC mỗi ngày = 18:00 giờ Việt Nam mỗi ngày**. Nếu muốn đổi giờ, sửa `schedule` theo công thức `phút giờ_UTC * * *`; ví dụ 20:30 Việt Nam là `30 13 * * *`. File `server/cronConfig.ts` và `server/cronConfig.test.ts` giúp kiểm tra phép chuyển đổi này.
+
+Route `/api/cron/sync-market` bắt buộc biến môi trường `CRON_SECRET` và nhận `Authorization: Bearer <CRON_SECRET>`. Vercel Cron sẽ gọi route theo cấu hình; không dùng `setInterval`, `node-cron`, systemd timer hoặc endpoint Heartbeat Manus cho phương án này. Trên Vercel, cần cấu hình tối thiểu:
+
+```dotenv
+CRON_SECRET=chuoi_ngau_nhien_dai
+DATABASE_URL=mysql://...
+RESEND_API_KEY=re_...
+ALERT_EMAIL=your-email@example.com
+JWT_SECRET=chuoi_ngau_nhien_dai
+```
+
+Sau khi deploy, kiểm tra Cron trong Vercel Dashboard, xem Function Logs và gọi thủ công với secret:
+
+```bash
+curl -i -H "Authorization: Bearer $CRON_SECRET" https://your-project.vercel.app/api/cron/sync-market
+```
+
+Lưu ý: Vercel Cron và Vercel Functions có giới hạn theo plan, thời gian chạy và mức sử dụng. Chức năng AI/provider/email cần hoàn tất bằng API key bên ngoài; các biến tích hợp nội bộ Manus không tự động có trên Vercel. Nếu cần lịch dày hơn hoặc thời gian chạy dài, phải kiểm tra plan Vercel hiện hành trước khi deploy.

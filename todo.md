@@ -52,3 +52,15 @@
 - [x] Hoàn thiện các hạng mục backend còn thiếu và test end-to-end — test tự động pass; live external integration cần secrets
 - [x] Hoàn thiện tài liệu deploy miễn phí và checklist vận hành production
 - [x] Đóng các issue đã hoàn thành, tạo checkpoint cuối và push mọi thay đổi lên GitHub — issue #16 còn mở để người dùng tạo VM
+
+- [x] Soạn hướng dẫn tạo Oracle Cloud VM Ubuntu cho Stock Advisor
+- [x] Soạn hướng dẫn SSH, firewall, Node.js/pnpm, build và systemd service
+- [x] Soạn hướng dẫn biến môi trường, quyền file secrets và kiểm tra cấu hình
+- [x] Soạn hướng dẫn systemd timer chạy CLI sync mỗi 2 giờ và checklist xử lý lỗi
+
+- [x] Chuyển issue deploy sang Vercel Cron, không dùng Oracle systemd timer làm mặc định
+- [x] Thêm file cấu hình lịch cron có thể chỉnh bởi người dùng
+- [x] Đặt mặc định sync mỗi ngày lúc 18:00 giờ Việt Nam, tương đương 11:00 UTC
+- [x] Thêm vercel.json route cron bảo vệ bằng CRON_SECRET và gọi pipeline phù hợp
+- [x] Viết test cho timezone conversion và cấu hình lịch
+- [x] Cập nhật tài liệu/issue Vercel, chạy test/build, checkpoint và push GitHub
