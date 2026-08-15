@@ -1,24 +1,28 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
-import { nodeHTTPRequestHandler } from "@trpc/server/adapters/node-http";
+import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "../../server/routers";
 import { createContext } from "../../server/_core/context";
 
-type VercelRequest = IncomingMessage & { body?: unknown };
-type VercelResponse = ServerResponse;
+type ExpressRequestLike = Parameters<typeof createContext>[0]["req"];
+type ExpressResponseLike = Parameters<typeof createContext>[0]["res"];
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const pathname = (req.url ?? "").split("?", 1)[0] ?? "";
-  const path = pathname.split("/").filter(Boolean).pop() ?? "";
+function adaptRequest(request: Request): ExpressRequestLike {
+  const url = new URL(request.url);
+  return {
+    method: request.method,
+    url: `${url.pathname}${url.search}`,
+    headers: Object.fromEntries(request.headers.entries()),
+  } as unknown as ExpressRequestLike;
+}
 
-  await nodeHTTPRequestHandler({
-    req,
-    res,
-    path,
+export default async function handler(request: Request) {
+  const adaptedRequest = adaptRequest(request);
+  const adaptedResponse = {} as ExpressResponseLike;
+
+  return fetchRequestHandler({
+    endpoint: "/api/trpc",
+    req: request,
     router: appRouter,
-    createContext: ({ req: contextReq, res: contextRes }) =>
-      createContext({
-        req: contextReq as Parameters<typeof createContext>[0]["req"],
-        res: contextRes as Parameters<typeof createContext>[0]["res"],
-      }),
+    createContext: () =>
+      createContext({ req: adaptedRequest, res: adaptedResponse }),
   });
 }

@@ -123,3 +123,5 @@
 - [x] Bổ sung và kiểm thử Vercel serverless tRPC route để AI config đọc được OPENAI_API_KEY trên production
 
 - [ ] Sửa lỗi HTTP 500 trên Vercel `/api/trpc/*`, kiểm tra OpenAI config, market quote và push config production
+
+- [ ] Cô lập lỗi runtime Vercel function sau deployment mới và thay handler tRPC bằng adapter tối giản có fallback an toàn
