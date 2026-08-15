@@ -114,4 +114,4 @@
 
 - [x] Mock OpenAI helper trong syncMarket test để xác nhận model từ ai_settings được truyền đúng khi phân tích tài sản
 
-- [ ] Đồng bộ checkpoint OpenAI mới nhất lên GitHub repository `trietnguyenk16-nkt/Stock-Advisor` và xác minh commit remote
+- [x] Đồng bộ checkpoint OpenAI mới nhất lên GitHub repository `trietnguyenk16-nkt/Stock-Advisor` và xác minh commit remote
