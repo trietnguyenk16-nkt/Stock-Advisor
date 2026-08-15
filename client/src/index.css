@@ -215,3 +215,40 @@
   .metric-card:nth-child(4) { animation-delay: 135ms; }
   @keyframes rise-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 }
+
+
+/* PWA and mobile ergonomics */
+.pwa-status {
+  position: fixed;
+  z-index: 60;
+  left: max(1rem, env(safe-area-inset-left));
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  min-height: 42px;
+  padding: .5rem .7rem .5rem 1rem;
+  border: 1px solid rgba(23, 75, 59, .14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 12px 34px rgba(23, 75, 59, .14);
+  color: #174b3b;
+  font-size: .78rem;
+  backdrop-filter: blur(14px);
+}
+.pwa-status span { flex: 1; }
+.pwa-status-offline { border-color: rgba(173, 86, 54, .22); color: #8c452c; }
+.pwa-status-install button { min-height: 34px; }
+.pwa-dismiss { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 50%; background: transparent; color: currentColor; cursor: pointer; }
+.pwa-dismiss:hover { background: rgba(23, 75, 59, .08); }
+button, a, [role="button"] { -webkit-tap-highlight-color: transparent; }
+@media (max-width: 640px) {
+  body { padding-bottom: env(safe-area-inset-bottom); }
+  .pwa-status { border-radius: 18px; align-items: flex-start; }
+  .pwa-status-install { flex-wrap: wrap; }
+  .pwa-status-install span { min-width: 12rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}

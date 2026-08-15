@@ -1,0 +1,17 @@
+{
+  "name": "Lumen Private Desk · Stock Advisor",
+  "short_name": "Lumen Desk",
+  "description": "Theo dõi cổ phiếu, chứng chỉ quỹ và giá vàng Việt Nam.",
+  "lang": "vi-VN",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f4f5ef",
+  "theme_color": "#174b3b",
+  "icons": [
+    { "src": "/pwa-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/pwa-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

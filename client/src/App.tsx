@@ -5,6 +5,7 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import PwaInstallPrompt from "./components/PwaInstallPrompt";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -32,6 +33,7 @@ function App() {
       >
         <TooltipProvider>
           <Toaster />
+          <PwaInstallPrompt />
           <Router />
         </TooltipProvider>
       </ThemeProvider>
@@ -40,3 +42,11 @@ function App() {
 }
 
 export default App;
+
+if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch((error) => {
+      console.warn("[PWA] Service worker registration failed", error);
+    });
+  });
+}

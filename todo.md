@@ -31,11 +31,18 @@
 
 - [x] Tạo issue quy trình deploy app bằng Manus hosting, không sử dụng Dockerfile
 - [x] Tạo issue chuyển dashboard thành PWA dùng được trên điện thoại
-- [ ] Tạo manifest, service worker, icon, install prompt và offline fallback cho PWA
-- [ ] Kiểm thử PWA trên viewport mobile và các tiêu chí Lighthouse cơ bản
+- [x] Tạo manifest, service worker, icon, install prompt và offline fallback cho PWA
+- [x] Kiểm thử PWA trên viewport mobile và các tiêu chí Lighthouse cơ bản
 
 - [x] Tạo CLI entrypoint chạy syncMarket trực tiếp không qua HTTP
 - [x] Thêm build output cho CLI và script `pnpm sync:market`
 - [x] Hỗ trợ runKey theo taskUid hoặc cửa sổ 2 giờ khi chạy trên VPS
 - [x] Viết test cho CLI exit code, idempotency và lỗi email/provider
 - [x] Cập nhật hướng dẫn systemd timer/cron để gọi CLI độc lập
+
+- [x] Thêm manifest PWA, metadata mobile và icon cài đặt
+- [x] Thêm service worker cache shell an toàn và offline fallback
+- [x] Thêm install prompt/instruction và trạng thái offline trong dashboard
+- [x] Tối ưu responsive mobile, safe-area và vùng chạm
+- [x] Viết test/checklist PWA, chạy typecheck/test/build và chụp mobile preview
+- [ ] Tạo checkpoint PWA và push code lên GitHub repository
