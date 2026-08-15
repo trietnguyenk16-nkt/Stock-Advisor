@@ -70,7 +70,21 @@ export default function Home() {
   const [lastUpdated, setLastUpdated] = useState("Chưa có lần đồng bộ");
   const [selectedAiModel, setSelectedAiModel] = useState<"gpt-4o-mini" | "gpt-5-mini">("gpt-4o-mini");
   const previousAiModel = useRef<"gpt-4o-mini" | "gpt-5-mini">("gpt-4o-mini");
-  const syncNow = trpc.market.syncNow.useMutation();
+  const utils = trpc.useUtils();
+  const syncNow = trpc.market.syncNow.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.market.quote.invalidate(),
+        utils.market.dashboard.invalidate(),
+        utils.market.history.invalidate(),
+        utils.ai.config.invalidate(),
+      ]);
+      toast.success("Đã đồng bộ dữ liệu", { description: "Giá và trạng thái AI đã được làm mới." });
+    },
+    onError: (error) => {
+      toast.error("Đồng bộ chưa thành công", { description: error.message || "Vui lòng kiểm tra cấu hình Vercel và Supabase." });
+    },
+  });
   const aiConfig = trpc.ai.config.useQuery();
   const saveAiModel = trpc.ai.setModel.useMutation({
     onSuccess: (result) => {
@@ -112,6 +126,8 @@ export default function Home() {
     try {
       await syncNow.mutateAsync();
       setLastUpdated(new Date().toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }));
+    } catch {
+      // The mutation error toast already explains the backend failure.
     } finally {
       setIsRefreshing(false);
     }
@@ -174,7 +190,7 @@ export default function Home() {
           <div className="space-y-6">
             <Card className="dashboard-card">
               <CardHeader className="px-5 pb-3 pt-5"><div className="flex items-center justify-between"><div><p className="eyebrow">AI LENS</p><CardTitle className="mt-1 text-lg tracking-[-0.03em]">Nhận định tổng hợp</CardTitle></div><div className="ai-icon"><Sparkles size={16} /></div></div></CardHeader>
-              <CardContent className="px-5 pb-5"><div className="mb-4 rounded-2xl border border-[#e4ece6] bg-[#fbfdfb] p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-semibold text-[#2b7152]">Model phân tích</p><p className="mt-1 text-[11px] text-[#89968e]">Lựa chọn được lưu cho các lần đồng bộ sau.</p></div><select aria-label="Chọn model AI" value={selectedAiModel} disabled={!aiConfig.data?.enabled || saveAiModel.isPending} onChange={(event) => { const model = event.target.value as "gpt-4o-mini" | "gpt-5-mini"; setSelectedAiModel(model); saveAiModel.mutate({ model }); }} className="h-10 rounded-xl border border-[#dce5df] bg-white px-3 text-xs font-medium text-[#315542] outline-none focus:ring-2 focus:ring-[#b9d8c5]"><option value="gpt-4o-mini">gpt-4o-mini</option><option value="gpt-5-mini">gpt-5-mini</option></select></div><p className="mt-2 text-[10px] text-[#9aa59e]">{aiConfig.isLoading ? "Đang kiểm tra cấu hình…" : aiConfig.data?.enabled ? "OpenAI đã sẵn sàng" : "Chưa cấu hình OPENAI_API_KEY trên Vercel"}</p></div><div className="rounded-2xl bg-[#f4f8f4] p-4"><div className="mb-3 flex items-center justify-between"><span className="text-xs font-semibold text-[#2b7152]">Đang chờ dữ liệu</span><span className="text-[10px] uppercase tracking-[0.14em] text-[#94a29a]">AI / 0 assets</span></div><p className="text-sm leading-6 text-[#65736b]">Sau lần đồng bộ đầu tiên, Lumen sẽ đưa ra tín hiệu <strong className="font-semibold text-[#31473a]">mua / bán / giữ</strong>, mức giá tham khảo và các rủi ro cần theo dõi.</p><div className="mt-4 flex items-center gap-2 text-[11px] text-[#8b9891]"><FileText size={13} />Không kết luận khi thiếu dữ liệu có nguồn</div></div><p className="mt-3 text-[11px] leading-5 text-[#9aa59e]">Phân tích AI chỉ mang tính tham khảo, không phải tư vấn đầu tư được cấp phép.</p></CardContent>
+              <CardContent className="px-5 pb-5"><div className="mb-4 rounded-2xl border border-[#e4ece6] bg-[#fbfdfb] p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-semibold text-[#2b7152]">Model phân tích</p><p className="mt-1 text-[11px] text-[#89968e]">Lựa chọn được lưu cho các lần đồng bộ sau.</p></div><select aria-label="Chọn model AI" value={selectedAiModel} disabled={!aiConfig.data?.enabled || saveAiModel.isPending} onChange={(event) => { const model = event.target.value as "gpt-4o-mini" | "gpt-5-mini"; setSelectedAiModel(model); saveAiModel.mutate({ model }); }} className="h-10 rounded-xl border border-[#dce5df] bg-white px-3 text-xs font-medium text-[#315542] outline-none focus:ring-2 focus:ring-[#b9d8c5]"><option value="gpt-4o-mini">gpt-4o-mini</option><option value="gpt-5-mini">gpt-5-mini</option></select></div><p className="mt-2 text-[10px] text-[#9aa59e]">{aiConfig.isLoading ? "Đang kiểm tra cấu hình…" : aiConfig.isError ? "Không gọi được API cấu hình OpenAI" : aiConfig.data?.enabled ? "OpenAI đã sẵn sàng" : "Chưa cấu hình OPENAI_API_KEY trên Vercel"}</p></div><div className="rounded-2xl bg-[#f4f8f4] p-4"><div className="mb-3 flex items-center justify-between"><span className="text-xs font-semibold text-[#2b7152]">Đang chờ dữ liệu</span><span className="text-[10px] uppercase tracking-[0.14em] text-[#94a29a]">AI / 0 assets</span></div><p className="text-sm leading-6 text-[#65736b]">Sau lần đồng bộ đầu tiên, Lumen sẽ đưa ra tín hiệu <strong className="font-semibold text-[#31473a]">mua / bán / giữ</strong>, mức giá tham khảo và các rủi ro cần theo dõi.</p><div className="mt-4 flex items-center gap-2 text-[11px] text-[#8b9891]"><FileText size={13} />Không kết luận khi thiếu dữ liệu có nguồn</div></div><p className="mt-3 text-[11px] leading-5 text-[#9aa59e]">Phân tích AI chỉ mang tính tham khảo, không phải tư vấn đầu tư được cấp phép.</p></CardContent>
             </Card>
             <PushNotificationCard />
             <Card className="dashboard-card">
