@@ -120,4 +120,6 @@
 
 - [ ] Redeploy trên Vercel và xác minh domain production render UI, route `/history` và API `/api/cron/sync-market`
 
-- [ ] Bổ sung và kiểm thử Vercel serverless tRPC route để AI config đọc được OPENAI_API_KEY trên production
+- [x] Bổ sung và kiểm thử Vercel serverless tRPC route để AI config đọc được OPENAI_API_KEY trên production
+
+- [ ] Sửa lỗi HTTP 500 trên Vercel `/api/trpc/*`, kiểm tra OpenAI config, market quote và push config production
