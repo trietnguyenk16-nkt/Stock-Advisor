@@ -13,7 +13,7 @@ export const appRouter = router({
   market: marketRouter,
   watchlist: router({
     list: publicProcedure.query(() => getTrackedAssets("owner")),
-    add: publicProcedure.input(z.object({ ticker: z.string().trim().min(1).max(32), displayName: z.string().trim().min(1).max(255), assetType: z.enum(["equity", "fund", "gold"]), exchange: z.string().trim().max(16).optional(), providerCode: z.string().trim().min(1).max(64), currency: z.string().trim().max(8).default("VND"), unit: z.string().trim().max(32).default("share") })).mutation(({ input }) => addTrackedAsset({ ...input, workspaceKey: "owner", ticker: input.ticker.toUpperCase(), isActive: 1 })),
+    add: publicProcedure.input(z.object({ ticker: z.string().trim().min(1).max(32), displayName: z.string().trim().min(1).max(255), assetType: z.enum(["equity", "fund", "gold"]), exchange: z.string().trim().max(16).optional(), providerCode: z.string().trim().min(1).max(64), currency: z.string().trim().max(8).default("VND"), unit: z.string().trim().max(32).default("share") })).mutation(({ input }) => addTrackedAsset({ ...input, workspaceKey: "owner", ticker: input.ticker.toUpperCase(), isActive: true })),
     remove: publicProcedure.input(z.object({ ticker: z.string().trim().min(1).max(32) })).mutation(async ({ input }) => { await deactivateTrackedAsset(input.ticker.toUpperCase(), "owner"); return { success: true }; }),
   }),
   auth: router({
