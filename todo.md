@@ -28,3 +28,14 @@
 - [ ] Tạo scheduled endpoint /api/scheduled/sync-market chạy mỗi 2 giờ theo UTC — endpoint đã có, Heartbeat chưa được activate vì cần deploy trước
 - [ ] Tạo email digest HTML và gửi qua Resend khi có RESEND_API_KEY/ALERT_EMAIL — code đã có, cần secrets và test delivery
 - [ ] Bổ sung test cho provider, idempotency, scheduled handler và email fallback — hiện mới có parser/provider test
+
+- [x] Tạo issue quy trình deploy app bằng Manus hosting, không sử dụng Dockerfile
+- [x] Tạo issue chuyển dashboard thành PWA dùng được trên điện thoại
+- [ ] Tạo manifest, service worker, icon, install prompt và offline fallback cho PWA
+- [ ] Kiểm thử PWA trên viewport mobile và các tiêu chí Lighthouse cơ bản
+
+- [x] Tạo CLI entrypoint chạy syncMarket trực tiếp không qua HTTP
+- [x] Thêm build output cho CLI và script `pnpm sync:market`
+- [x] Hỗ trợ runKey theo taskUid hoặc cửa sổ 2 giờ khi chạy trên VPS
+- [x] Viết test cho CLI exit code, idempotency và lỗi email/provider
+- [x] Cập nhật hướng dẫn systemd timer/cron để gọi CLI độc lập
