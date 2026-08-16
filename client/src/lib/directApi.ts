@@ -1,6 +1,6 @@
 export type AiConfig = { enabled: boolean; model: "gpt-4o-mini" | "gpt-5-mini"; models: readonly string[] };
-export type Quote = { ticker: string; name: string; currency: string; price?: number; change?: number; asOf: string; source: string };
-export type PortfolioAnalysis = { ticker: string; name: string; signal: "BUY" | "SELL" | "HOLD"; summary: string; referencePrice: number; targetPrice: number; risk: string; confidence: number; news: Array<{ title: string; publisher: string; link: string; publishedAt: string | null }> };
+export type Quote = { ticker: string; name: string; currency: string; price?: number | null; change?: number | null; asOf: string; source: string };
+export type PortfolioAnalysis = { ticker: string; name: string; signal: "BUY" | "SELL" | "HOLD"; summary: string; referencePrice: number | null; targetPrice: number | null; risk: string; confidence: number | null; news: Array<{ title: string; publisher: string; link: string; publishedAt: string | null }> };
 export type AiAnalysisResponse = { ok?: boolean; status?: string; model?: AiConfig["model"]; analyzed?: number; skipped?: number; results?: PortfolioAnalysis[]; errors?: string[] };
 
 export function normalizeAiAnalysisResponse(payload: AiAnalysisResponse, fallbackModel: AiConfig["model"], assetCount: number) {

@@ -211,3 +211,9 @@
 - [x] Chạy validation và cập nhật test provider/direct sync; checkpoint/push thực hiện ngay sau validation
 - [ ] Redeploy bản commit cuối trên Vercel và xác minh AI result, sync history, quỹ và vàng production
 - [ ] Đóng các TODO production còn lại sau khi domain Vercel thực tế được xác minh
+
+- [x] Fix production crash `Cannot read properties of null (reading 'toFixed')` in dashboard numeric formatting
+- [x] Audit all dashboard price/change/AI numeric formatters for null/undefined safety
+- [x] Add regression tests for null market values and AI analysis numeric fields
+- [x] Run 50+ tests, typecheck, production build and visual smoke check
+- [ ] Push crash fix to GitHub and save a new checkpoint; user must redeploy Vercel
