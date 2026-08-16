@@ -257,4 +257,4 @@
 
 - [x] Identify newly added GitHub issues #22–#36 and record acceptance criteria; audit found their requested code paths already present in the latest release
 - [x] Implement newly added GitHub issues and add regression tests; latest code paths for #22–#36 were audited and covered by `server/newIssuesAudit.test.ts`
-- [ ] Run validation, commit, push GitHub, update issue labels, and save checkpoint
+- [x] Run validation, commit, push GitHub, update issue labels, and save checkpoint
