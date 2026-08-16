@@ -46,11 +46,11 @@ describe("direct Vercel endpoint contracts", () => {
 
   it("returns structured error when manual sync rejects", async () => {
     const harness = responseHarness();
-    const syncModule = await import("../server/syncMarket");
-    vi.spyOn(syncModule, "syncMarket").mockRejectedValue(new Error("database unavailable"));
+    const syncModule = await import("../server/manualSync");
+    vi.spyOn(syncModule, "runManualSync").mockRejectedValue(new Error("database unavailable"));
     await marketSync({} as any, harness.res as any);
-    expect(harness.res.statusCode).toBe(500);
-    expect(harness.read()).toEqual({ error: "database unavailable" });
+    expect(harness.res.statusCode).toBe(200);
+    expect(harness.read()).toMatchObject({ ok: false, status: "failed", code: "SYNC_FAILED", message: "database unavailable" });
   });
 
   it("supports a Web Request invocation without a Node response object", async () => {

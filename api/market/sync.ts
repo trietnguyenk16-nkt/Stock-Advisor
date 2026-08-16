@@ -4,12 +4,14 @@ function send(res: AnyResponse | undefined, body: unknown, status = 200) { if (!
 
 export default async function handler(_req: AnyRequest, res?: AnyResponse) {
   try {
-    const { syncMarket } = await import("../../server/syncMarket");
-    const syncPromise = syncMarket(`manual:${new Date().toISOString().slice(0, 16)}`);
+    const { runManualSync } = await import("../../server/manualSync");
+    const syncPromise = runManualSync(`manual:${new Date().toISOString().slice(0, 16)}`);
     const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Manual sync timed out after 45 seconds")), 45_000));
     const result = await Promise.race([syncPromise, timeoutPromise]);
     return send(res, result);
   } catch (error) {
-    return send(res, { error: error instanceof Error ? error.message : "Internal server error" }, 500);
+    const message = error instanceof Error ? error.message : "Internal server error";
+    console.error("[api/market/sync] failed", message);
+    return send(res, { ok: false, status: "failed", code: "SYNC_FAILED", message, error: message }, 200);
   }
 }

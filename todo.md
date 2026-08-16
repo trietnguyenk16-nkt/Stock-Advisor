@@ -157,3 +157,7 @@
 - [x] Hardening `/api/ai/model`: raw-body parsing, additive ai_settings ensure và lỗi database có cấu trúc; persistence live cần xác minh sau redeploy
 - [x] Hardening `/api/market/sync`: lazy-load web-push, catch lỗi và trả trạng thái sync rõ ràng; live cần xác minh sau redeploy
 - [ ] Kiểm thử, push một commit cuối và xác minh hai endpoint trên Vercel
+
+- [x] Tách `/api/market/sync` khỏi import runtime nặng gây 500 trước khi có log — dùng `server/manualSync.ts` không có top-level imports
+- [x] Bảo đảm manual sync và AI model luôn trả JSON lỗi có mã trạng thái rõ ràng
+- [x] Chạy validation, push một commit cuối và hướng dẫn redeploy; nếu còn lỗi thì dừng
