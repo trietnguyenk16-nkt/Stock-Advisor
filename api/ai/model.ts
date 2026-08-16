@@ -1,8 +1,8 @@
-type AnyRequest = { body?: unknown; json?: () => Promise<unknown> };
+type AnyRequest = { body?: unknown; json?: () => Promise<unknown>; on?: (event: string, listener: (...args: any[]) => void) => AnyRequest };
 type AnyResponse = { statusCode?: number; setHeader?: (name: string, value: string) => void; status?: (code: number) => AnyResponse; json?: (value: unknown) => AnyResponse; end?: (body?: string) => void };
 const AI_MODELS = ["gpt-4o-mini", "gpt-5-mini"] as const;
 function send(res: AnyResponse | undefined, body: unknown, status = 200) { if (!res) return Response.json(body, { status }); const text = JSON.stringify(body); res.setHeader?.("content-type", "application/json; charset=utf-8"); if (res.status && res.json) { res.status(status).json(body); return; } res.statusCode = status; res.end?.(text); }
-async function getBody(req: AnyRequest) { if (req.body !== undefined) return typeof req.body === "string" ? JSON.parse(req.body) : req.body; if (req.json) try { return await req.json(); } catch {} return undefined; }
+async function getBody(req: AnyRequest) { if (req.body !== undefined) return typeof req.body === "string" ? JSON.parse(req.body) : req.body; if (req.json) try { return await req.json(); } catch {} if (req.on) return await new Promise((resolve) => { let raw = ""; req.on?.("data", (chunk: Buffer | string) => { raw += chunk.toString(); }); req.on?.("end", () => { try { resolve(raw ? JSON.parse(raw) : undefined); } catch { resolve(undefined); } }); req.on?.("error", () => resolve(undefined)); }); return undefined; }
 
 export default async function handler(req: AnyRequest, res?: AnyResponse) {
   const body = await getBody(req);
@@ -11,8 +11,10 @@ export default async function handler(req: AnyRequest, res?: AnyResponse) {
   try {
     const { setAiModel } = await import("../../server/db");
     const saved = await setAiModel(model);
-    return send(res, { ok: Boolean(saved), model, persisted: Boolean(saved) });
+    if (!saved) return send(res, { error: "Database chưa sẵn sàng để lưu model", code: "DATABASE_UNAVAILABLE", model, persisted: false }, 503);
+    return send(res, { ok: true, model, persisted: true });
   } catch (error) {
-    return send(res, { error: error instanceof Error ? error.message : "Internal server error" }, 500);
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return send(res, { error: message, code: "MODEL_PERSIST_FAILED", model, persisted: false }, 503);
   }
 }

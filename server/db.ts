@@ -1,5 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
+import { sql } from "drizzle-orm";
 import { Pool } from "pg";
 import { ENV } from "./_core/env";
 import { InsertUser, aiSettings, assetAnalyses, emailDeliveries, newsItems, priceSnapshots, pushSubscriptions, syncRuns, trackedAssets, users } from "../drizzle/schema";
@@ -17,17 +18,21 @@ export async function getDb() {
       _pool = new Pool({ connectionString, ssl: { rejectUnauthorized: false }, max: 3, idleTimeoutMillis: 10_000, connectionTimeoutMillis: 10_000, maxUses: 500 });
       _db = drizzle(_pool);
       if (ENV.ownerOpenId && !_ownerEnsured) {
-        await _db.insert(users).values({
-          openId: ENV.ownerOpenId,
-          name: process.env.OWNER_NAME ?? "Stock Advisor Owner",
-          email: process.env.ALERT_EMAIL ?? null,
-          role: "admin",
-          lastSignedIn: new Date(),
-        }).onConflictDoUpdate({
-          target: users.openId,
-          set: { name: process.env.OWNER_NAME ?? "Stock Advisor Owner", email: process.env.ALERT_EMAIL ?? null, role: "admin", updatedAt: new Date() },
-        });
-        _ownerEnsured = true;
+        try {
+          await _db.insert(users).values({
+            openId: ENV.ownerOpenId,
+            name: process.env.OWNER_NAME ?? "Stock Advisor Owner",
+            email: process.env.ALERT_EMAIL ?? null,
+            role: "admin",
+            lastSignedIn: new Date(),
+          }).onConflictDoUpdate({
+            target: users.openId,
+            set: { name: process.env.OWNER_NAME ?? "Stock Advisor Owner", email: process.env.ALERT_EMAIL ?? null, role: "admin", updatedAt: new Date() },
+          });
+          _ownerEnsured = true;
+        } catch (error) {
+          console.warn("[Database] Owner bootstrap skipped; Stock Advisor schema can still be used:", error instanceof Error ? error.message : error);
+        }
       }
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
@@ -55,6 +60,8 @@ export async function getAiModel(workspaceKey = "owner") {
 export async function setAiModel(model: string, workspaceKey = "owner") {
   const db = await getDb();
   if (!db) return undefined;
+  await db.execute(sql.raw(`CREATE SCHEMA IF NOT EXISTS stock_advisor`));
+  await db.execute(sql.raw(`CREATE TABLE IF NOT EXISTS stock_advisor.ai_settings (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, workspace_key varchar(96) NOT NULL DEFAULT 'owner', model varchar(64) NOT NULL DEFAULT 'gpt-4o-mini', updated_at timestamptz NOT NULL DEFAULT now(), CONSTRAINT ai_settings_workspace_key_unique UNIQUE (workspace_key))`));
   await db.insert(aiSettings).values({ workspaceKey, model, updatedAt: new Date() }).onConflictDoUpdate({ target: aiSettings.workspaceKey, set: { model, updatedAt: new Date() } });
   const rows = await db.select().from(aiSettings).where(eq(aiSettings.workspaceKey, workspaceKey)).limit(1);
   return rows[0];

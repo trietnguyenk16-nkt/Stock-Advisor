@@ -153,3 +153,7 @@
 - [x] Loại bỏ import `api/_lib/vercel.ts` khỏi các Vercel API vì deployment hiện tại không đóng gói module helper này
 - [x] Kiểm tra toàn bộ API direct không còn import `_lib/vercel`, `_lib/universal` hoặc `_lib/node` và chạy lại tests/build
 - [ ] Push một commit sửa cuối, redeploy và xác minh `/api/market/quote` cùng `/api/ai/config`
+
+- [x] Hardening `/api/ai/model`: raw-body parsing, additive ai_settings ensure và lỗi database có cấu trúc; persistence live cần xác minh sau redeploy
+- [x] Hardening `/api/market/sync`: lazy-load web-push, catch lỗi và trả trạng thái sync rõ ràng; live cần xác minh sau redeploy
+- [ ] Kiểm thử, push một commit cuối và xác minh hai endpoint trên Vercel
