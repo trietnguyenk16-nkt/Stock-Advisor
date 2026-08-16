@@ -1,6 +1,7 @@
 import { json, errorResponse } from "../_lib/direct";
+import { withWebRequest } from "../_lib/vercel";
 
-export default async function handler(request: Request) {
+export default withWebRequest(async (request) => {
   const ticker = new URL(request.url).searchParams.get("ticker")?.trim().toUpperCase() ?? "";
   if (!ticker) return json({ error: "Ticker is required" }, 400);
   try {
@@ -18,4 +19,4 @@ export default async function handler(request: Request) {
   } catch (error) {
     return errorResponse(error);
   }
-}
+})

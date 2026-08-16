@@ -16,7 +16,7 @@ afterEach(() => {
 describe("direct Vercel endpoint contracts", () => {
   it("returns OpenAI config without requiring a database connection", async () => {
     process.env.OPENAI_API_KEY = "test-key";
-    const response = await aiConfig();
+    const response = await aiConfig(new Request("https://example.test/api/ai/config"));
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ enabled: true, model: "gpt-4o-mini" });
   });
@@ -35,12 +35,12 @@ describe("direct Vercel endpoint contracts", () => {
   });
 
   it("returns safe empty history and push config responses without optional secrets", async () => {
-    const history = await marketHistory();
+    const history = await marketHistory(new Request("https://example.test/api/market/history"));
     expect(history.status).toBe(200);
     const historyBody = await history.json() as { syncRuns: unknown[]; emailDeliveries: unknown[] };
     expect(Array.isArray(historyBody.syncRuns)).toBe(true);
     expect(Array.isArray(historyBody.emailDeliveries)).toBe(true);
-    const push = await pushConfig();
+    const push = await pushConfig(new Request("https://example.test/api/push/config"));
     expect(push.status).toBe(200);
     expect(await push.json()).toEqual({ enabled: false, publicKey: null });
   });

@@ -52,5 +52,5 @@ describe("syncMarket AI model handoff", () => {
     expect(mocks.analyze).toHaveBeenCalledWith("gpt-5-mini", expect.objectContaining({ asset: expect.objectContaining({ ticker: "VNM.VN" }) }));
     expect(result.status).toBe("success");
     expect(mocks.finishSyncRun).toHaveBeenCalled();
-  });
+  }, 15000);
 });

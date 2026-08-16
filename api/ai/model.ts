@@ -1,7 +1,8 @@
 import { AI_MODELS } from "../../server/openai";
 import { json, readJson, errorResponse } from "../_lib/direct";
+import { withWebRequest } from "../_lib/vercel";
 
-export default async function handler(request: Request) {
+export default withWebRequest(async (request) => {
   const body = await readJson(request);
   const model = body?.model;
   if (!AI_MODELS.includes(model)) return json({ error: "Model AI không được hỗ trợ" }, 400);
@@ -12,4 +13,4 @@ export default async function handler(request: Request) {
   } catch (error) {
     return errorResponse(error);
   }
-}
+})

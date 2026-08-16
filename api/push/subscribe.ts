@@ -1,6 +1,7 @@
 import { json, readJson, errorResponse } from "../_lib/direct";
+import { withWebRequest } from "../_lib/vercel";
 
-export default async function handler(request: Request) {
+export default withWebRequest(async (request) => {
   const body = await readJson(request);
   if (!body?.endpoint || !body?.keys?.p256dh || !body?.keys?.auth) return json({ error: "Invalid push subscription" }, 400);
   try {
@@ -10,4 +11,4 @@ export default async function handler(request: Request) {
   } catch (error) {
     return errorResponse(error);
   }
-}
+})
