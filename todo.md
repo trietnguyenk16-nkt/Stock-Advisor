@@ -182,3 +182,11 @@
 - [x] Chống thêm tài sản trùng và hiển thị thông báo rõ ràng khi đã có trong danh mục
 - [x] Cải thiện AI analysis panel để luôn dễ thấy, có trạng thái chưa có dữ liệu và trạng thái phân tích
 - [x] Kiểm thử UI desktop/mobile, thêm test status helper, 39 tests/typecheck/build pass và chuẩn bị checkpoint phát hành
+
+- [x] Xác minh git remote/branch và commit hiện tại chứa asset picker UI/UX mới
+- [x] Commit và push bản UI/UX picker mới lên GitHub branch main — `eab90a3` đã được đẩy lên `trietnguyenk16-nkt/Stock-Advisor:main`
+- [x] Gửi commit hash và hướng dẫn redeploy đúng Vercel project/domain
+
+- [x] Thêm nút `Bắt đầu phân tích AI` với trạng thái loading, thành công, lỗi và thiếu dữ liệu
+- [x] Mở rộng catalog quỹ Việt Nam gồm DCDS, VCBF-BCF và các mã quỹ tham khảo từ Fmarket
+- [x] Hiển thị nguồn tham khảo/quy tắc dữ liệu quỹ và thêm test cho nút AI, tìm kiếm quỹ, chống trùng

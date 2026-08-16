@@ -11,6 +11,7 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 export const directApi = {
   aiConfig: () => requestJson<AiConfig>("/api/ai/config"),
   saveAiModel: (model: AiConfig["model"]) => requestJson<{ ok: boolean; model: AiConfig["model"]; persisted: boolean }>("/api/ai/model", { method: "POST", body: JSON.stringify({ model }) }),
+  analyzeAi: (model?: AiConfig["model"]) => requestJson<{ ok: boolean; status: string; model: AiConfig["model"]; analyzed: number; skipped: number; errors: string[] }> ("/api/ai/analyze", { method: "POST", body: JSON.stringify(model ? { model } : {}) }),
   quote: (ticker: string) => requestJson<Quote>(`/api/market/quote?ticker=${encodeURIComponent(ticker)}`),
   sync: () => requestJson<{ status?: string; message?: string }>("/api/market/sync", { method: "POST" }),
   history: () => requestJson<{ syncRuns: any[]; emailDeliveries: any[] }>("/api/market/history"),

@@ -4,7 +4,7 @@ import { filterAssetCatalog, isAssetSelected } from "../client/src/lib/assetCata
 describe("asset catalog picker", () => {
   it("filters stocks and funds by type and search text", () => {
     expect(filterAssetCatalog("Cổ phiếu", "FPT").map((item) => item.ticker)).toContain("FPT.VN");
-    expect(filterAssetCatalog("Chứng chỉ quỹ", "diamond").map((item) => item.ticker)).toContain("FUEVFVND.VN");
+    expect(filterAssetCatalog("Chứng chỉ quỹ", "diamond").map((item) => item.ticker)).toContain("FUEVFVND");
     expect(filterAssetCatalog("Cổ phiếu", "diamond")).toHaveLength(0);
   });
 

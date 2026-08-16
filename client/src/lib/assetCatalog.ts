@@ -1,7 +1,7 @@
 export type AssetKind = "Cổ phiếu" | "Chứng chỉ quỹ" | "Vàng";
 
 export type Asset = { ticker: string; name: string; kind: AssetKind; currency: string; providerCode?: string; price?: number; change?: number };
-export type CatalogAsset = { ticker: string; name: string; kind: AssetKind; providerCode: string; currency: string; description: string };
+export type CatalogAsset = { ticker: string; name: string; kind: AssetKind; providerCode: string; currency: string; description: string; source?: string };
 
 /**
  * Curated Vietnamese market picker. Equity symbols are common VN-Index/HOSE constituents;
@@ -12,13 +12,13 @@ export const assetCatalog: CatalogAsset[] = [
 ].map(([ticker, name, sector]) => ({ ticker: `${ticker}.VN`, name, kind: "Cổ phiếu" as const, providerCode: `${ticker}.VN`, currency: "VND", description: `${sector} · VN-Index` }));
 
 export const fundCatalog: CatalogAsset[] = [
-  ["E1VFVN30", "DCVFM VN30 ETF", "ETF VN30"], ["FUEVFVND", "DCVFM VN Diamond ETF", "ETF VN Diamond"], ["FUESSVFL", "SSIAM VNFIN Lead ETF", "ETF tài chính"], ["FUEMAV30", "Mirae Asset VN30 ETF", "ETF VN30"], ["FUEKIVFS", "KIM Growth VN30 ETF", "ETF VN30"], ["FUEBFVND", "BVFVN Diamond ETF", "ETF VN Diamond"], ["FUESSV50", "SSIAM VNX50 ETF", "ETF VNX50"], ["FUEIP100", "IPAAM VN100 ETF", "ETF VN100"],
-].map(([ticker, name, description]) => ({ ticker: `${ticker}.VN`, name, kind: "Chứng chỉ quỹ" as const, providerCode: `${ticker}.VN`, currency: "VND", description }));
+  ["E1VFVN30", "DCVFM VN30 ETF", "ETF VN30", "ETF niêm yết · Fmarket"], ["FUEVFVND", "DCVFM VN Diamond ETF", "ETF VN Diamond", "ETF niêm yết · Fmarket"], ["FUESSVFL", "SSIAM VNFIN Lead ETF", "ETF tài chính", "ETF niêm yết · Fmarket"], ["FUEMAV30", "Mirae Asset VN30 ETF", "ETF VN30", "ETF niêm yết · Fmarket"], ["FUEKIVFS", "KIM Growth VN30 ETF", "ETF VN30", "ETF niêm yết · Fmarket"], ["FUEBFVND", "BVFVN Diamond ETF", "ETF VN Diamond", "ETF niêm yết · Fmarket"], ["DCDS", "Quỹ đầu tư chứng khoán năng động DC", "Quỹ cổ phiếu", "Quỹ mở · Fmarket"], ["VCBF-BCF", "Quỹ đầu tư cổ phiếu hàng đầu VCBF", "Quỹ cổ phiếu", "Quỹ mở · Fmarket/VCBF"], ["VCBF-MGF", "Quỹ đầu tư cổ phiếu tăng trưởng VCBF", "Quỹ cổ phiếu", "Quỹ mở · Fmarket/VCBF"], ["VCBF-AIF", "Quỹ đầu tư thu nhập chủ động VCBF", "Quỹ cân bằng", "Quỹ mở · Fmarket/VCBF"], ["VCBF-TBF", "Quỹ đầu tư cân bằng chiến lược VCBF", "Quỹ cân bằng", "Quỹ mở · Fmarket/VCBF"], ["VCBF-FIF", "Quỹ đầu tư trái phiếu VCBF", "Quỹ trái phiếu", "Quỹ mở · Fmarket/VCBF"], ["SSISCA", "Quỹ cổ phiếu chiến lược SSI", "Quỹ cổ phiếu", "Quỹ mở · Fmarket"], ["VESAF", "Quỹ đầu tư cổ phiếu Hưng Thịnh VinaWealth", "Quỹ cổ phiếu", "Quỹ mở · Fmarket"], ["VEOF", "Quỹ đầu tư cổ phiếu năng động Eastspring", "Quỹ cổ phiếu", "Quỹ mở · Fmarket"], ["MAGEF", "Quỹ đầu tư giá trị Mirae Asset", "Quỹ cổ phiếu", "Quỹ mở · Fmarket"], ["BVFED", "Quỹ đầu tư cổ phiếu năng động Bảo Việt", "Quỹ cổ phiếu", "Quỹ mở · Fmarket"], ["BVPF", "Quỹ đầu tư trái phiếu Bảo Việt", "Quỹ trái phiếu", "Quỹ mở · Fmarket"], ["DCAF", "Quỹ đầu tư trái phiếu DC", "Quỹ trái phiếu", "Quỹ mở · Fmarket"], ["TCGF", "Quỹ đầu tư cổ phiếu tăng trưởng Techcom", "Quỹ cổ phiếu", "Quỹ mở · Fmarket"], ["KDEF", "Quỹ đầu tư cổ phiếu KIM", "Quỹ cổ phiếu", "Quỹ mở · Fmarket"], ["RVPIF", "Quỹ đầu tư cổ phiếu Rồng Việt", "Quỹ cổ phiếu", "Quỹ mở · Fmarket"], ["NTPPF", "Quỹ đầu tư cổ phiếu triển vọng", "Quỹ cổ phiếu", "Quỹ mở · Fmarket"], ["GDEGF", "Quỹ đầu tư tăng trưởng dài hạn", "Quỹ cổ phiếu", "Quỹ mở · Fmarket"], ["DCDE", "Quỹ đầu tư cổ phiếu Diamond", "Quỹ cổ phiếu", "Quỹ mở · Fmarket"], ["AEIF", "Quỹ đầu tư cổ phiếu tiếp cận châu Á", "Quỹ cổ phiếu", "Quỹ mở · Fmarket"], ["LPLF", "Quỹ đầu tư cổ phiếu triển vọng", "Quỹ cổ phiếu", "Quỹ mở · Fmarket"], ["ABEF", "Quỹ đầu tư cân bằng", "Quỹ cân bằng", "Quỹ mở · Fmarket"],
+].map(([ticker, name, description, source]) => ({ ticker, name, kind: "Chứng chỉ quỹ" as const, providerCode: ticker, currency: "VND", description, source }));
 
 export const assetCatalogWithGold: CatalogAsset[] = [
   ...assetCatalog,
   ...fundCatalog,
-  { ticker: "SJC", name: "Vàng miếng SJC", kind: "Vàng", providerCode: "GC=F", currency: "VND", description: "Vàng trong nước · mặc định" },
+  { ticker: "SJC", name: "Vàng miếng SJC", kind: "Vàng", providerCode: "GC=F", currency: "VND", description: "Vàng trong nước · mặc định", source: "SJC" },
 ];
 
 export function filterAssetCatalog(kind: AssetKind, query: string) {
