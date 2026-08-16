@@ -114,6 +114,7 @@ export default function Home() {
     }
     setIsAnalyzingAi(true);
     setLastAiResult(null);
+    setAiAnalyses([]);
     try {
       const quoteResults = await Promise.allSettled(assets.map((asset) => directApi.quote(asset.ticker)));
       const refreshedQuotes = quoteResults.flatMap((item, index) => item.status === "fulfilled" ? [{ ...item.value, assetType: assets[index].kind === "Vàng" ? "gold" : assets[index].kind === "Chứng chỉ quỹ" ? "fund" : "equity", providerCode: assets[index].providerCode ?? assets[index].ticker }] : []);
