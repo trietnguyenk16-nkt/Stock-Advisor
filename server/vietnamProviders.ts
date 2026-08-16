@@ -56,6 +56,16 @@ function extractAround(html: string, label: string) {
 
 async function fetchGoldQuote(asset: TrackedAsset): Promise<VietnamQuote> {
   const errors: string[] = [];
+  try {
+    const url = "https://edge-api.pnj.io/ecom-frontend/v1/get-gold-price?zone=00";
+    const response = await fetch(url, { headers: { "user-agent": USER_AGENT, accept: "application/json" } });
+    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+    const payload = await response.json() as any;
+    const sjc = (payload?.data ?? []).find((row: any) => String(row?.masp ?? "").toUpperCase() === "SJC");
+    const bid = Number(sjc?.giamua); const ask = Number(sjc?.giaban);
+    if (!Number.isFinite(bid) || !Number.isFinite(ask)) throw new Error("PNJ không trả về dòng SJC hợp lệ");
+    return { bid: bid * 1000, ask: ask * 1000, price: ask * 1000, asOf: Date.now(), sourceName: "PNJ SJC API", sourceUrl: url, freshness: "live", warning: "Giá SJC lấy từ endpoint công khai của PNJ, zone 00." };
+  } catch (error) { errors.push(`PNJ API: ${error instanceof Error ? error.message : String(error)}`); }
   for (const source of GOLD_SOURCES) {
     try {
       const html = await fetchText(source.url);
@@ -74,7 +84,7 @@ async function fetchGoldQuote(asset: TrackedAsset): Promise<VietnamQuote> {
 async function fetchFundNav(asset: TrackedAsset): Promise<VietnamQuote> {
   const url = `https://cafef.vn/du-lieu/chung-chi-quy/${encodeURIComponent(asset.providerCode)}.chn`;
   const html = await fetchText(url);
-  const match = html.match(/(?:Giá NAV|NAV)[^0-9]{0,160}([0-9][0-9.,]*)/i);
+  const match = html.match(/Giá\s*NAV[^:]{0,120}:\s*([0-9][0-9.,]*)/i) ?? html.match(/NAV[^:]{0,120}:\s*([0-9][0-9.,]*)/i);
   const nav = match ? parseVietnamNumber(match[1] ?? "") : undefined;
   if (nav === undefined) throw new Error(`Không parse được NAV cho ${asset.ticker}`);
   return { price: nav, asOf: Date.now(), sourceName: "CafeF fund data", sourceUrl: url, freshness: "eod", warning: "NAV quỹ được định giá theo lịch của quỹ, không phải giá realtime." };

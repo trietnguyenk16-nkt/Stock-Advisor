@@ -22,3 +22,26 @@ describe("Vietnam market providers", () => {
     expect(quote.sourceUrl).toContain("hnx.vn");
   });
 });
+
+  it("extracts the NAV value after the CafeF date label", async () => {
+    const fund = { ...asset, ticker: "DCDS", displayName: "DCDS", assetType: "fund" as const, providerCode: "DCDS" };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, text: async () => '<title>DCDS: Giá NAV (ngày 16-08-2026): 93,969.17 VNĐ</title>' }));
+    const quote = await fetchVietnamQuote(fund);
+    expect(quote.price).toBe(93969.17);
+    expect(quote.sourceName).toBe("CafeF fund data");
+    expect(quote.freshness).toBe("eod");
+  });
+
+  it("uses the PNJ public API for the default SJC gold quote", async () => {
+    const gold = { ...asset, ticker: "SJC", displayName: "Vàng SJC", assetType: "gold" as const, providerCode: "GC=F" };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ masp: "SJC", giamua: 14100, giaban: 14400 }] }),
+    }));
+    const quote = await fetchVietnamQuote(gold);
+    expect(quote.price).toBe(14400000);
+    expect(quote.bid).toBe(14100000);
+    expect(quote.ask).toBe(14400000);
+    expect(quote.sourceName).toBe("PNJ SJC API");
+    expect(quote.freshness).toBe("live");
+  });

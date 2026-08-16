@@ -7,6 +7,16 @@ export default async function handler(req: AnyRequest, res?: AnyResponse) {
   const ticker = getUrl(req).searchParams.get("ticker")?.trim().toUpperCase() ?? "";
   if (!ticker) return send(res, { error: "Ticker is required" }, 400);
   try {
+    if (ticker === "SJC" || ticker === "GC=F") {
+      const sourceUrl = "https://edge-api.pnj.io/ecom-frontend/v1/get-gold-price?zone=00";
+      const response = await fetch(sourceUrl, { headers: { accept: "application/json", "user-agent": "LumenPersonalDesk/1.0" } });
+      if (!response.ok) throw new Error(`PNJ ${response.status}`);
+      const payload = await response.json() as any;
+      const row = (payload?.data ?? []).find((item: any) => String(item?.masp ?? "").toUpperCase() === "SJC");
+      const price = Number(row?.giaban) * 1000;
+      if (!Number.isFinite(price)) throw new Error("PNJ không trả về giá bán SJC hợp lệ");
+      return send(res, { ticker, name: "Vàng miếng SJC", currency: "VND", price, change: null, asOf: new Date().toISOString(), source: "PNJ SJC API" });
+    }
     const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=5d&interval=1d`, { headers: { accept: "application/json", "user-agent": "LumenPersonalDesk/1.0" } });
     if (!response.ok) throw new Error(`Market data request failed: ${response.status}`);
     const payload = await response.json() as any;

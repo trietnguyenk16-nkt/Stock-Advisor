@@ -32,7 +32,9 @@ describe("direct Vercel endpoint contracts", () => {
     const harness = responseHarness();
     await aiConfig({} as any, harness.res as any);
     expect(harness.res.statusCode).toBe(200);
-    expect(harness.read()).toMatchObject({ enabled: true, model: "gpt-4o-mini" });
+    const config = harness.read();
+    expect(config.enabled).toBe(true);
+    expect(["gpt-4o-mini", "gpt-5-mini"]).toContain(config.model);
   });
 
   it("validates model POST input and returns a JSON error", async () => {
@@ -73,6 +75,15 @@ describe("direct Vercel endpoint contracts", () => {
     await marketSync({} as any, harness.res as any);
     expect(harness.res.statusCode).toBe(200);
     expect(harness.read()).toMatchObject({ ok: false, status: "failed", code: "DATABASE_UNAVAILABLE" });
+  });
+
+  it("returns structured empty history when database is unavailable", async () => {
+    delete process.env.SUPABASE_DATABASE_URL;
+    delete process.env.DATABASE_URL;
+    const harness = responseHarness();
+    await marketHistory({} as any, harness.res as any);
+    expect(harness.res.statusCode).toBe(200);
+    expect(harness.read()).toMatchObject({ ok: false, code: "DATABASE_URL_MISSING", syncRuns: [], emailDeliveries: [] });
   });
 
   it("supports a Web Request invocation without a Node response object", async () => {

@@ -11,6 +11,7 @@ export default async function handler(req: AnyRequest, res?: AnyResponse) {
   try {
     const { Pool } = await import("pg");
     pool = new Pool({ connectionString: connectionString.replace(/([?&])sslmode=[^&]*/i, "$1").replace(/[?&]$/, ""), ssl: { rejectUnauthorized: false }, max: 1, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 10_000 });
+    await pool.query(`CREATE SCHEMA IF NOT EXISTS stock_advisor; CREATE TABLE IF NOT EXISTS stock_advisor.tracked_assets (id BIGSERIAL PRIMARY KEY, workspace_key VARCHAR(96) NOT NULL DEFAULT 'owner', ticker VARCHAR(32) NOT NULL, display_name VARCHAR(255) NOT NULL, asset_type VARCHAR(16) NOT NULL, provider_code VARCHAR(64) NOT NULL, currency VARCHAR(8) NOT NULL DEFAULT 'VND', unit VARCHAR(32) NOT NULL DEFAULT 'share', is_active BOOLEAN NOT NULL DEFAULT true, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE(workspace_key, ticker));`);
     if ((req.method ?? "GET").toUpperCase() === "POST") {
       const body = await getBody(req);
       const ticker = String(body?.ticker ?? "").trim().toUpperCase();

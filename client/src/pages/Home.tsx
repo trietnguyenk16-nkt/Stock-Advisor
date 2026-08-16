@@ -98,9 +98,13 @@ export default function Home() {
     try {
       const result = await directApi.analyzeAi(selectedAiModel);
       if (!result.ok && result.analyzed === 0) throw new Error(result.errors?.[0] ?? "Không tạo được phân tích");
-      setAiAnalyses(result.results);
-      setLastAiResult(`${result.analyzed} tài sản đã phân tích${result.skipped ? ` · ${result.skipped} tài sản chờ dữ liệu` : ""}`);
-      toast.success("Đã hoàn tất phân tích AI", { description: `${result.analyzed} tài sản được cập nhật bằng ${result.model}.` });
+      const analyses = Array.isArray(result.results) ? result.results : [];
+      const analyzedCount = Number.isFinite(Number(result.analyzed)) ? Number(result.analyzed) : analyses.length;
+      const skippedCount = Number.isFinite(Number(result.skipped)) ? Number(result.skipped) : Math.max(0, assets.length - analyzedCount);
+      const modelUsed = result.model || selectedAiModel;
+      setAiAnalyses(analyses);
+      setLastAiResult(`${analyzedCount} tài sản đã phân tích${skippedCount ? ` · ${skippedCount} tài sản chờ dữ liệu` : ""}`);
+      toast.success("Đã hoàn tất phân tích AI", { description: `${analyzedCount} tài sản được cập nhật bằng ${modelUsed}.` });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Không thể chạy phân tích AI";
       toast.error("Phân tích AI chưa hoàn tất", { description: message });

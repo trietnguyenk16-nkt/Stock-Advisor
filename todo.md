@@ -199,3 +199,15 @@
 - [x] Tạo endpoint phân tích danh mục và truyền tin tức/giá liên quan cho từng mã
 - [x] Thêm nút phân tích toàn bộ danh mục, hiển thị mỗi mã cách một dòng phân cách rõ ràng
 - [x] Báo lỗi rõ ràng khi chọn lại mã đã có và thêm tests cho duplicate/prompt/format
+
+- [ ] Sửa mapping kết quả AI để không còn `undefined` và hiển thị đúng số mã/model
+- [ ] Ghi `sync_runs` trong mọi manual sync và refresh History sau khi đồng bộ
+- [ ] Bảo đảm tài sản mới được đọc đúng từ `tracked_assets` và cập nhật quote/status sau sync
+- [ ] Bổ sung/điều chỉnh provider NAV cho chứng chỉ quỹ mở, đồng thời xác minh nguồn cổ phiếu và vàng
+- [ ] Thêm tests cho bốn lỗi production, kiểm thử nguồn/provider và lưu checkpoint
+
+- [x] Sửa parser NAV CafeF để lấy đúng số sau nhãn `Giá NAV (ngày):` và ghi nhận nguồn/freshness rõ ràng
+- [x] Tích hợp endpoint giá vàng PNJ công khai zone 00 cho SJC, giữ fallback Yahoo/nguồn khác khi PNJ không khả dụng
+- [x] Chạy validation và cập nhật test provider/direct sync; checkpoint/push thực hiện ngay sau validation
+- [ ] Redeploy bản commit cuối trên Vercel và xác minh AI result, sync history, quỹ và vàng production
+- [ ] Đóng các TODO production còn lại sau khi domain Vercel thực tế được xác minh
