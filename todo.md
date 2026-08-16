@@ -277,4 +277,4 @@
 
 - [x] Update AI decision contract so BUY/SELL are selected when evidence supports them and HOLD is reserved for insufficient/neutral evidence; prompt explicitly rejects default HOLD
 - [x] Add actionable strategy fields for entry zone, position sizing, take-profit, stop-loss and invalidation conditions; rendered in `AiResultsPanel`
-- [ ] Add strategy regression tests, validate, push and checkpoint
+- [x] Add strategy regression tests, validate, push and checkpoint; commit `6355c99` pushed with 70 tests passing
