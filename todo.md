@@ -224,3 +224,8 @@
 - [x] Return readable AI text for each analyzed ticker with signal, price, reasoning, risk and confidence
 - [x] Add regression coverage for fund sync and AI analyzed-count/result rendering
 - [x] Validate, push the fixes to GitHub, and save a new checkpoint
+
+- [ ] Disable Vercel Deployment Protection for the public production deployment; repository code cannot change this project-level setting
+- [x] Verify whether the protection is controlled by repository config or only Vercel project settings
+- [x] Add a public deployment smoke/health contract and document the exact no-login Vercel setting
+- [x] Validate fund NAV and AI API contracts locally, then push and checkpoint the deployment-ready fix
