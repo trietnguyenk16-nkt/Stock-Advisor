@@ -161,3 +161,7 @@
 - [x] Tách `/api/market/sync` khỏi import runtime nặng gây 500 trước khi có log — dùng `server/manualSync.ts` không có top-level imports
 - [x] Bảo đảm manual sync và AI model luôn trả JSON lỗi có mã trạng thái rõ ràng
 - [x] Chạy validation, push một commit cuối và hướng dẫn redeploy; nếu còn lỗi thì dừng
+
+- [x] Loại bỏ dynamic import `server/manualSync.ts` vì Vercel không bundle module này
+- [x] Đưa phần direct manual sync tối thiểu vào API tự chứa: claim sync, đọc tài sản, lấy quote Yahoo và ghi `price_snapshots`/`sync_runs`; pipeline news/AI/email/push cũ vẫn giữ ở scheduled/CLI path
+- [ ] Chạy validation, push commit cuối và checkpoint; nếu còn lỗi sau redeploy thì dừng

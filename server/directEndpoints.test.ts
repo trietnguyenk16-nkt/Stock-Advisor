@@ -7,6 +7,8 @@ import marketSync from "../api/market/sync";
 import pushConfig from "../api/push/config";
 
 const originalOpenAiKey = process.env.OPENAI_API_KEY;
+const originalSupabaseUrl = process.env.SUPABASE_DATABASE_URL;
+const originalDatabaseUrl = process.env.DATABASE_URL;
 function responseHarness() {
   let body = "";
   const res = { statusCode: 200, headers: new Map<string, string>(), setHeader(key: string, value: string) { this.headers.set(key, value); }, end(value?: string | Uint8Array) { body = typeof value === "string" ? value : value ? new TextDecoder().decode(value) : ""; } };
@@ -17,6 +19,10 @@ afterEach(() => {
   vi.restoreAllMocks();
   if (originalOpenAiKey === undefined) delete process.env.OPENAI_API_KEY;
   else process.env.OPENAI_API_KEY = originalOpenAiKey;
+  if (originalSupabaseUrl === undefined) delete process.env.SUPABASE_DATABASE_URL;
+  else process.env.SUPABASE_DATABASE_URL = originalSupabaseUrl;
+  if (originalDatabaseUrl === undefined) delete process.env.DATABASE_URL;
+  else process.env.DATABASE_URL = originalDatabaseUrl;
 });
 
 describe("direct Vercel endpoint contracts", () => {
@@ -44,13 +50,13 @@ describe("direct Vercel endpoint contracts", () => {
     expect(harness.read()).toMatchObject({ code: "DATABASE_UNAVAILABLE", persisted: false, model: "gpt-5-mini" });
   });
 
-  it("returns structured error when manual sync rejects", async () => {
+  it("returns structured JSON when manual sync has no database configuration", async () => {
+    delete process.env.SUPABASE_DATABASE_URL;
+    delete process.env.DATABASE_URL;
     const harness = responseHarness();
-    const syncModule = await import("../server/manualSync");
-    vi.spyOn(syncModule, "runManualSync").mockRejectedValue(new Error("database unavailable"));
     await marketSync({} as any, harness.res as any);
     expect(harness.res.statusCode).toBe(200);
-    expect(harness.read()).toMatchObject({ ok: false, status: "failed", code: "SYNC_FAILED", message: "database unavailable" });
+    expect(harness.read()).toMatchObject({ ok: false, status: "failed", code: "DATABASE_UNAVAILABLE" });
   });
 
   it("supports a Web Request invocation without a Node response object", async () => {
