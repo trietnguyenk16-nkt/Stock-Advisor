@@ -1,16 +1,16 @@
-import { sendJson, readJson, type ApiRequest, type ApiResponse } from "../_lib/node";
-import { universal } from "../_lib/universal";
+type AnyRequest = { body?: unknown; json?: () => Promise<unknown> };
+type AnyResponse = { statusCode?: number; setHeader?: (name: string, value: string) => void; status?: (code: number) => AnyResponse; json?: (value: unknown) => AnyResponse; end?: (body?: string) => void };
+function send(res: AnyResponse | undefined, body: unknown, status = 200) { if (!res) return Response.json(body, { status }); const text = JSON.stringify(body); res.setHeader?.("content-type", "application/json; charset=utf-8"); if (res.status && res.json) { res.status(status).json(body); return; } res.statusCode = status; res.end?.(text); }
+async function getBody(req: AnyRequest) { if (req.body !== undefined) return typeof req.body === "string" ? JSON.parse(req.body) : req.body; if (req.json) try { return await req.json(); } catch {} return undefined; }
 
-async function handler(req: ApiRequest, res: ApiResponse) {
-  const body = await readJson(req);
-  if (!body?.endpoint || !body?.keys?.p256dh || !body?.keys?.auth) return sendJson(res, { error: "Invalid push subscription" }, 400);
+export default async function handler(req: AnyRequest, res?: AnyResponse) {
+  const body = await getBody(req);
+  if (!body?.endpoint || !body?.keys?.p256dh || !body?.keys?.auth) return send(res, { error: "Invalid push subscription" }, 400);
   try {
     const { upsertPushSubscription } = await import("../../server/db");
     await upsertPushSubscription({ endpoint: body.endpoint, p256dh: body.keys.p256dh, auth: body.keys.auth });
-    return sendJson(res, { ok: true });
+    return send(res, { ok: true });
   } catch (error) {
-    return sendJson(res, { error: error instanceof Error ? error.message : "Internal server error" }, 500);
+    return send(res, { error: error instanceof Error ? error.message : "Internal server error" }, 500);
   }
 }
-
-export default universal(handler);

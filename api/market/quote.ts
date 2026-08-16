@@ -1,4 +1,7 @@
-import { getUrl, send, type AnyRequest, type AnyResponse } from "../_lib/vercel";
+type AnyRequest = { url?: string; query?: Record<string, string | string[] | undefined> };
+type AnyResponse = { statusCode?: number; setHeader?: (name: string, value: string) => void; status?: (code: number) => AnyResponse; json?: (value: unknown) => AnyResponse; end?: (body?: string) => void };
+function getUrl(req: AnyRequest) { const url = new URL(req.url ?? "/", "http://localhost"); if (!req.url) for (const [key, value] of Object.entries(req.query ?? {})) { if (Array.isArray(value)) value.forEach((item) => item !== undefined && url.searchParams.append(key, item)); else if (value !== undefined) url.searchParams.set(key, value); } return url; }
+function send(res: AnyResponse | undefined, body: unknown, status = 200) { if (!res) return Response.json(body, { status }); const text = JSON.stringify(body); res.setHeader?.("content-type", "application/json; charset=utf-8"); if (res.status && res.json) { res.status(status).json(body); return; } res.statusCode = status; res.end?.(text); }
 
 export default async function handler(req: AnyRequest, res?: AnyResponse) {
   const ticker = getUrl(req).searchParams.get("ticker")?.trim().toUpperCase() ?? "";

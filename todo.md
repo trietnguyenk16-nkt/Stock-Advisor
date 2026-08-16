@@ -139,7 +139,7 @@
 
 - [x] Rà soát toàn bộ Vercel entrypoints và cô lập import gây FUNCTION_INVOCATION_FAILED
 - [x] Thiết kế lại API production và manual sync handler an toàn, có timeout và JSON error rõ ràng
-- [ ] Chạy toàn bộ validation, tạo một checkpoint phát hành duy nhất và push GitHub
+- [x] Chạy toàn bộ validation, tạo một checkpoint phát hành duy nhất và push GitHub
 - [ ] Xác minh deployment mới trên domain Vercel và hoàn tất production checklist
 
 - [x] Sửa lỗi Vercel build `Function Runtimes must have a valid version` do cấu hình runtime không tương thích
@@ -148,4 +148,8 @@
 
 - [x] Cô lập direct API khỏi import khởi tạo nặng gây `FUNCTION_INVOCATION_FAILED` trong production
 - [x] Bảo đảm `/api/ai/config`, `/api/market/quote` và `/api/market/sync` luôn trả JSON error/success an toàn
-- [ ] Kiểm thử deployment contract mới, commit/push một lần cuối và xác minh production
+- [ ] Kiểm thử deployment contract mới, commit/push một lần cuối và xác minh production — code/test/commit đã hoàn tất; live verification chờ đúng Production domain
+
+- [x] Loại bỏ import `api/_lib/vercel.ts` khỏi các Vercel API vì deployment hiện tại không đóng gói module helper này
+- [x] Kiểm tra toàn bộ API direct không còn import `_lib/vercel`, `_lib/universal` hoặc `_lib/node` và chạy lại tests/build
+- [ ] Push một commit sửa cuối, redeploy và xác minh `/api/market/quote` cùng `/api/ai/config`
