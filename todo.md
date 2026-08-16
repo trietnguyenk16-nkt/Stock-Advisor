@@ -258,3 +258,7 @@
 - [x] Identify newly added GitHub issues #22–#36 and record acceptance criteria; audit found their requested code paths already present in the latest release
 - [x] Implement newly added GitHub issues and add regression tests; latest code paths for #22–#36 were audited and covered by `server/newIssuesAudit.test.ts`
 - [x] Run validation, commit, push GitHub, update issue labels, and save checkpoint
+
+- [x] Audit all GitHub issues without DONE status and classify code-vs-external dependencies; #16/#17 retain external verification dependencies, #18–#21 are code-complete
+- [x] Implement all not-DONE issue requirements that are actionable in the repository and add tests; added `server/notDoneIssueContracts.test.ts` for #16–#21
+- [ ] Validate, push code, update issue labels and save a checkpoint for the not-DONE issue batch
