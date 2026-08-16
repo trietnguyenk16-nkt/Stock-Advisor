@@ -253,3 +253,4 @@
 - [x] Implement priority issue #25: detailed per-asset sync history
 - [x] Implement priority issue #26: selected-date historical comparison
 - [x] Validate, commit/push priority issues, tag #22-#26 DONE, and checkpoint
+- [x] Fix preview runtime crash: remove incorrect React package aliases from Vite; verify dashboard renders and 57 tests/typecheck/build pass
