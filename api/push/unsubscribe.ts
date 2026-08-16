@@ -1,6 +1,7 @@
 import { sendJson, readJson, type ApiRequest, type ApiResponse } from "../_lib/node";
+import { universal } from "../_lib/universal";
 
-export default async function handler(req: ApiRequest, res: ApiResponse) {
+async function handler(req: ApiRequest, res: ApiResponse) {
   const body = await readJson(req);
   if (!body?.endpoint) return sendJson(res, { error: "Endpoint is required" }, 400);
   try {
@@ -11,3 +12,5 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     return sendJson(res, { error: error instanceof Error ? error.message : "Internal server error" }, 500);
   }
 }
+
+export default universal(handler);

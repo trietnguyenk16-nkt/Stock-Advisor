@@ -136,3 +136,8 @@
 - [x] Cập nhật frontend dùng các endpoint trực tiếp thay vì phụ thuộc batch tRPC catch-all
 - [x] Thêm test request/response contract cho direct API endpoints và frontend không phụ thuộc tRPC catch-all
 - [ ] Redeploy bản mới nhất và xác minh code path production; nếu không có domain/credentials thì ghi rõ bước người dùng cần thực hiện
+
+- [x] Rà soát toàn bộ Vercel entrypoints và cô lập import gây FUNCTION_INVOCATION_FAILED
+- [x] Thiết kế lại API production và manual sync handler an toàn, có timeout và JSON error rõ ràng
+- [ ] Chạy toàn bộ validation, tạo một checkpoint phát hành duy nhất và push GitHub
+- [ ] Xác minh deployment mới trên domain Vercel và hoàn tất production checklist

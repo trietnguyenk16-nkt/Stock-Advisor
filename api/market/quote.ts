@@ -1,6 +1,7 @@
 import { sendJson, requestUrl, type ApiRequest, type ApiResponse } from "../_lib/node";
+import { universal } from "../_lib/universal";
 
-export default async function handler(req: ApiRequest, res: ApiResponse) {
+async function handler(req: ApiRequest, res: ApiResponse) {
   const ticker = requestUrl(req).searchParams.get("ticker")?.trim().toUpperCase() ?? "";
   if (!ticker) return sendJson(res, { error: "Ticker is required" }, 400);
   try {
@@ -19,3 +20,5 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     return sendJson(res, { error: error instanceof Error ? error.message : "Internal server error" }, 500);
   }
 }
+
+export default universal(handler);

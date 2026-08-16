@@ -1,12 +1,6 @@
-# Vercel production verification — 2026-08-16
 
-The public domain `https://stock-advisor-nine-black.vercel.app` rendered the dashboard, but the deployed frontend still showed the old tRPC-based behavior. Direct browser-console requests returned:
+## Follow-up after Node-native checkpoint — 2026-08-16
 
-- `/api/trpc/ai.config?...`: HTTP 500 `FUNCTION_INVOCATION_FAILED`.
-- `/api/trpc/market.quote?...`: HTTP 500 `FUNCTION_INVOCATION_FAILED`.
-- `/api/ai/config`: HTTP 404 `NOT_FOUND`.
-- `/api/market/quote?ticker=VNM.VN`: HTTP 404 `NOT_FOUND`.
-- `/api/market/history`: HTTP 404 `NOT_FOUND`.
-- `/api/push/config`: HTTP 404 `NOT_FOUND`.
+Checkpoint `19c975ff` was pushed to GitHub and contains direct Node-native `(req, res)` handlers. Local typecheck, all 31 Vitest tests, and production build pass.
 
-The code checkpoint containing independent direct API functions was `87a243b`, pushed to GitHub `main`. Therefore the domain inspected was not serving that checkpoint yet, or the Vercel project is connected to a different repository/root directory/deployment than the GitHub branch. No claim of production success is made until a deployment serving `87a243b` is verified.
+The inspected public alias `https://stock-advisor-nine-black.vercel.app` was checked again after the push. `/api/ai/config`, `/api/market/quote?ticker=VNM.VN`, `/api/market/history`, and `/api/push/config` still returned HTTP 500 `FUNCTION_INVOCATION_FAILED`. This indicates the alias is still serving the previous deployment or Vercel has not finished/selected the new deployment; the code checkpoint cannot be considered production-verified from this alias yet.

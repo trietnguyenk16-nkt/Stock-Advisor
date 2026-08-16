@@ -1,6 +1,7 @@
 import { sendJson, type ApiRequest, type ApiResponse } from "../_lib/node";
+import { universal } from "../_lib/universal";
 
-export default async function handler(_req: ApiRequest, res: ApiResponse) {
+async function handler(_req: ApiRequest, res: ApiResponse) {
   try {
     const { getEmailHistory, getSyncHistory } = await import("../../server/db");
     return sendJson(res, { syncRuns: await getSyncHistory(30), emailDeliveries: await getEmailHistory(30) });
@@ -8,3 +9,5 @@ export default async function handler(_req: ApiRequest, res: ApiResponse) {
     return sendJson(res, { error: error instanceof Error ? error.message : "Internal server error" }, 500);
   }
 }
+
+export default universal(handler);

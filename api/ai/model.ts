@@ -1,7 +1,8 @@
 import { AI_MODELS } from "../../server/openai";
 import { sendJson, readJson, type ApiRequest, type ApiResponse } from "../_lib/node";
+import { universal } from "../_lib/universal";
 
-export default async function handler(req: ApiRequest, res: ApiResponse) {
+async function handler(req: ApiRequest, res: ApiResponse) {
   const body = await readJson(req);
   const model = body?.model;
   if (!AI_MODELS.includes(model)) return sendJson(res, { error: "Model AI không được hỗ trợ" }, 400);
@@ -13,3 +14,5 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     return sendJson(res, { error: error instanceof Error ? error.message : "Internal server error" }, 500);
   }
 }
+
+export default universal(handler);
