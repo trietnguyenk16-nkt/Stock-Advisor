@@ -229,3 +229,8 @@
 - [x] Verify whether the protection is controlled by repository config or only Vercel project settings
 - [x] Add a public deployment smoke/health contract and document the exact no-login Vercel setting
 - [x] Validate fund NAV and AI API contracts locally, then push and checkpoint the deployment-ready fix
+
+- [x] Reduce Vercel serverless routes to 12 or fewer for the Hobby plan without breaking public API paths
+- [x] Fix strict TypeScript error in push unsubscribe handler
+- [x] Add route-consolidation compatibility coverage and verify build function count
+- [x] Push Hobby-compatible build fix and checkpoint release
