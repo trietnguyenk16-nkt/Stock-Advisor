@@ -34,6 +34,14 @@ describe("direct Vercel endpoint contracts", () => {
     expect(harness.read().error).toContain("không được hỗ trợ");
   });
 
+  it("supports a Web Request invocation without a Node response object", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ chart: { result: [{ meta: { shortName: "Vinamilk", currency: "VND", regularMarketPrice: 70000, previousClose: 69000 }, indicators: { quote: [{ close: [69000, 70000] }] } }] } }), { status: 200, headers: { "content-type": "application/json" } })));
+    const response = await marketQuote(new Request("https://example.com/api/market/quote?ticker=vnm.vn") as any);
+    expect(response).toBeInstanceOf(Response);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ticker: "VNM.VN", price: 70000 });
+  });
+
   it("serves quote GET with the expected normalized response", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ chart: { result: [{ meta: { shortName: "Vinamilk", currency: "VND", regularMarketPrice: 70000, previousClose: 69000 }, indicators: { quote: [{ close: [69000, 70000] }] } }] } }), { status: 200, headers: { "content-type": "application/json" } })));
     const harness = responseHarness();

@@ -1,18 +1,16 @@
-import { AI_MODELS } from "../../server/openai";
-import { sendJson, readJson, type ApiRequest, type ApiResponse } from "../_lib/node";
-import { universal } from "../_lib/universal";
+import { getBody, send, type AnyRequest, type AnyResponse } from "../_lib/vercel";
 
-async function handler(req: ApiRequest, res: ApiResponse) {
-  const body = await readJson(req);
+const AI_MODELS = ["gpt-4o-mini", "gpt-5-mini"] as const;
+
+export default async function handler(req: AnyRequest, res?: AnyResponse) {
+  const body = await getBody(req);
   const model = body?.model;
-  if (!AI_MODELS.includes(model)) return sendJson(res, { error: "Model AI không được hỗ trợ" }, 400);
+  if (!AI_MODELS.includes(model)) return send(res, { error: "Model AI không được hỗ trợ" }, 400);
   try {
     const { setAiModel } = await import("../../server/db");
     const saved = await setAiModel(model);
-    return sendJson(res, { ok: Boolean(saved), model, persisted: Boolean(saved) });
+    return send(res, { ok: Boolean(saved), model, persisted: Boolean(saved) });
   } catch (error) {
-    return sendJson(res, { error: error instanceof Error ? error.message : "Internal server error" }, 500);
+    return send(res, { error: error instanceof Error ? error.message : "Internal server error" }, 500);
   }
 }
-
-export default universal(handler);

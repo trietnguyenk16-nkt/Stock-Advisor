@@ -1,37 +1,53 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
-import { errorResponse } from "./direct";
+type AnyRequest = {
+  method?: string;
+  url?: string;
+  query?: Record<string, string | string[] | undefined>;
+  body?: unknown;
+  headers?: Record<string, string | string[] | undefined>;
+  json?: () => Promise<unknown>;
+};
 
-function headerValue(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value.join(", ") : value;
+type AnyResponse = {
+  statusCode?: number;
+  setHeader?: (name: string, value: string) => void;
+  status?: (code: number) => AnyResponse;
+  json?: (value: unknown) => AnyResponse;
+  end?: (body?: string) => void;
+};
+
+export function getUrl(req: AnyRequest): URL {
+  if (typeof req.url === "string") return new URL(req.url, "http://localhost");
+  const url = new URL("http://localhost");
+  for (const [key, value] of Object.entries(req.query ?? {})) {
+    if (Array.isArray(value)) value.forEach((item) => item !== undefined && url.searchParams.append(key, item));
+    else if (value !== undefined) url.searchParams.set(key, value);
+  }
+  return url;
 }
 
-export function withWebRequest(handler: (request: Request) => Promise<Response> | Response) {
-  return async (req: IncomingMessage & { body?: unknown } | Request, res?: ServerResponse) => {
-    if (!res && req instanceof Request) return handler(req);
-    if (!res) throw new Error("Vercel response object is missing");
-    try {
-      const protocol = headerValue(req.headers["x-forwarded-proto"]) ?? "https";
-      const host = headerValue(req.headers.host) ?? "localhost";
-      const url = new URL(req.url ?? "/", `${protocol}://${host}`);
-      const headers = new Headers();
-      for (const [key, value] of Object.entries(req.headers)) {
-        if (value !== undefined) headers.set(key, headerValue(value)!);
-      }
-      let body: string | undefined;
-      if (req.method !== "GET" && req.method !== "HEAD") {
-        if (typeof req.body === "string") body = req.body;
-        else if (req.body !== undefined) body = JSON.stringify(req.body);
-      }
-      const request = new Request(url, { method: req.method ?? "GET", headers, body });
-      const response = await handler(request);
-      res.statusCode = response.status;
-      response.headers.forEach((value, key) => res.setHeader(key, value));
-      res.end(Buffer.from(await response.arrayBuffer()));
-    } catch (error) {
-      const response = errorResponse(error);
-      res.statusCode = response.status;
-      response.headers.forEach((value, key) => res.setHeader(key, value));
-      res.end(Buffer.from(await response.arrayBuffer()));
+export async function getBody(req: AnyRequest): Promise<any> {
+  if (req.body !== undefined) {
+    if (typeof req.body === "string") {
+      try { return JSON.parse(req.body); } catch { return undefined; }
     }
-  };
+    return req.body;
+  }
+  if (typeof req.json === "function") {
+    try { return await req.json(); } catch { return undefined; }
+  }
+  return undefined;
 }
+
+export function send(res: AnyResponse | undefined, body: unknown, status = 200): Response | void {
+  if (!res) return Response.json(body, { status, headers: { "cache-control": "no-store" } });
+  const payload = JSON.stringify(body);
+  try { res.setHeader?.("content-type", "application/json; charset=utf-8"); } catch {}
+  if (typeof res.status === "function" && typeof res.json === "function") {
+    res.status(status).json(body);
+    return;
+  }
+  res.statusCode = status;
+  res.end?.(payload);
+}
+
+export type { AnyRequest, AnyResponse };

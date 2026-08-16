@@ -145,3 +145,7 @@
 - [x] Sửa lỗi Vercel build `Function Runtimes must have a valid version` do cấu hình runtime không tương thích
 - [x] Chạy validation sau khi bỏ runtime override không hợp lệ và phát hành commit sửa Vercel
 - [ ] Redeploy lại trên Vercel và xác minh build/API production sau commit sửa runtime
+
+- [x] Cô lập direct API khỏi import khởi tạo nặng gây `FUNCTION_INVOCATION_FAILED` trong production
+- [x] Bảo đảm `/api/ai/config`, `/api/market/quote` và `/api/market/sync` luôn trả JSON error/success an toàn
+- [ ] Kiểm thử deployment contract mới, commit/push một lần cuối và xác minh production
