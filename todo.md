@@ -246,3 +246,10 @@
 - [x] Fix new-asset and fund synchronization plus AI quote eligibility in the production contract
 - [x] Recheck notification/email readiness and replace dashboard tagline with meaningful product copy
 - [x] Test, commit, push, tag completed GitHub issues DONE, and checkpoint every completed release
+
+- [x] Implement priority issue #22: gold bid/ask in Watchlist
+- [x] Implement priority issue #23: day-over-day change reference
+- [x] Implement priority issue #24: Watchlist source column
+- [x] Implement priority issue #25: detailed per-asset sync history
+- [x] Implement priority issue #26: selected-date historical comparison
+- [ ] Validate, commit/push priority issues, tag #22-#26 DONE, and checkpoint
