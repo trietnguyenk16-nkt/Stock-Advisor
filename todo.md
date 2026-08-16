@@ -141,3 +141,7 @@
 - [x] Thiết kế lại API production và manual sync handler an toàn, có timeout và JSON error rõ ràng
 - [ ] Chạy toàn bộ validation, tạo một checkpoint phát hành duy nhất và push GitHub
 - [ ] Xác minh deployment mới trên domain Vercel và hoàn tất production checklist
+
+- [x] Sửa lỗi Vercel build `Function Runtimes must have a valid version` do cấu hình runtime không tương thích
+- [x] Chạy validation sau khi bỏ runtime override không hợp lệ và phát hành commit sửa Vercel
+- [ ] Redeploy lại trên Vercel và xác minh build/API production sau commit sửa runtime
