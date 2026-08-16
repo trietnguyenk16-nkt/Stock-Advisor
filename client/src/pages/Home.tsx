@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { directApi, type AiConfig, type Quote } from "@/lib/directApi";
+import { getAssetStatusLabel } from "@/lib/assetStatus";
 import { Input } from "@/components/ui/input";
 import { Link } from "wouter";
 import PushNotificationCard from "@/components/PushNotificationCard";
@@ -74,6 +75,7 @@ export default function Home() {
   const [isSavingAiModel, setIsSavingAiModel] = useState(false);
   const [selectedAiModel, setSelectedAiModel] = useState<AiConfig["model"]>("gpt-4o-mini");
   const previousAiModel = useRef<AiConfig["model"]>("gpt-4o-mini");
+  const assetsPersisted = useRef(false);
 
   useEffect(() => {
     directApi.aiConfig().then((config) => {
@@ -103,19 +105,37 @@ export default function Home() {
     localStorage.setItem("stock-advisor-assets", JSON.stringify(assets));
   }, [assets]);
 
-
+  useEffect(() => {
+    if (assetsPersisted.current) return;
+    assetsPersisted.current = true;
+    void Promise.all(assets.map((asset) => directApi.addAsset({ ticker: asset.ticker, displayName: asset.name, assetType: asset.kind === "Vàng" ? "gold" : asset.kind === "Chứng chỉ quỹ" ? "fund" : "equity", providerCode: asset.ticker }))).catch(() => undefined);
+  }, [assets]);
 
   const syncedAssets = useMemo(() => assets.filter((asset) => asset.price !== undefined), [assets]);
 
-  const addAsset = () => {
+  const addAsset = async () => {
     const normalized = ticker.trim().toUpperCase();
     if (!normalized || assets.some((asset) => asset.ticker === normalized)) return;
-    setAssets((current) => [...current, { ticker: normalized, name: normalized, kind, currency: kind === "Vàng" ? "USD" : "VND" }]);
-    setTicker("");
-    setIsAdding(false);
+    const nextAsset = { ticker: normalized, name: normalized, kind, currency: kind === "Vàng" ? "USD" : "VND" };
+    try {
+      await directApi.addAsset({ ticker: normalized, displayName: normalized, assetType: kind === "Vàng" ? "gold" : kind === "Chứng chỉ quỹ" ? "fund" : "equity", providerCode: normalized });
+      setAssets((current) => [...current, nextAsset]);
+      setTicker("");
+      setIsAdding(false);
+      toast.success("Đã lưu tài sản", { description: "Tài sản sẽ được đưa vào lần đồng bộ kế tiếp." });
+    } catch (error) {
+      toast.error("Không thể lưu tài sản", { description: error instanceof Error ? error.message : "Kiểm tra cấu hình Supabase trên Vercel." });
+    }
   };
 
-  const removeAsset = (tickerToRemove: string) => setAssets((current) => current.filter((asset) => asset.ticker !== tickerToRemove));
+  const removeAsset = async (tickerToRemove: string) => {
+    try {
+      await directApi.removeAsset(tickerToRemove);
+      setAssets((current) => current.filter((asset) => asset.ticker !== tickerToRemove));
+    } catch (error) {
+      toast.error("Không thể xóa tài sản", { description: error instanceof Error ? error.message : "Kiểm tra cấu hình Supabase trên Vercel." });
+    }
+  };
 
   const refresh = async () => {
     setIsRefreshing(true);
@@ -222,5 +242,5 @@ function AssetRow({ asset, onRemove, refreshKey, onQuote }: { asset: Asset; onRe
   }, [asset.ticker, refreshKey]);
   const liveAsset: Asset = quote ? { ...asset, name: quote.name, currency: quote.currency || asset.currency, price: quote.price, change: quote.change } : asset;
   const hasChange = liveAsset.change !== undefined;
-  return <div className="asset-row relative grid gap-3 px-5 py-4 pr-14 sm:grid-cols-[1.5fr_0.8fr_0.8fr_0.8fr_28px] sm:items-center sm:gap-4 sm:px-6"><div className="flex min-w-0 items-center gap-3"><div className={`ticker-badge ${liveAsset.kind === "Vàng" ? "gold" : liveAsset.kind === "Chứng chỉ quỹ" ? "fund" : "stock"}`}>{liveAsset.ticker.replace(".VN", "").replace("=F", "").slice(0, 4)}</div><div className="min-w-0"><p className="truncate text-sm font-semibold text-[#2c3e32]">{liveAsset.name}</p><p className="mt-0.5 truncate text-[11px] text-[#95a199]">{liveAsset.ticker} · {liveAsset.kind}</p></div></div><div className="flex items-center justify-between sm:block"><span className="text-[10px] uppercase tracking-[0.12em] text-[#a0aaa4] sm:hidden">Giá</span><p className="text-sm font-semibold text-[#304439]">{isLoadingQuote ? "Đang tải" : formatPrice(liveAsset)} <span className="text-[10px] font-medium text-[#9da8a1]">{liveAsset.currency}</span></p></div><div className="flex items-center justify-between sm:block"><span className="text-[10px] uppercase tracking-[0.12em] text-[#a0aaa4] sm:hidden">Biến động</span><p className={`flex items-center gap-1 text-sm font-semibold ${hasChange && liveAsset.change! >= 0 ? "text-[#2d8961]" : hasChange ? "text-[#c45e54]" : "text-[#909d95]"}`}>{hasChange && (liveAsset.change! >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />)}{formatChange(liveAsset)}</p></div><div className="flex items-center justify-between sm:block"><span className="text-[10px] uppercase tracking-[0.12em] text-[#a0aaa4] sm:hidden">Trạng thái</span><Badge variant="outline" className="rounded-full border-[#dce8df] bg-[#f6faf7] text-[10px] font-medium text-[#65806f]">{isLoadingQuote ? "Đang tải" : quoteError ? "Không có dữ liệu" : hasChange ? "Đã cập nhật" : "Chờ đồng bộ"}</Badge></div><button onClick={() => onRemove(asset.ticker)} className="absolute right-4 top-4 grid min-h-11 min-w-11 place-items-center rounded-full text-[#b2bdb6] transition hover:bg-[#f3f7f3] hover:text-[#bd5e54] sm:static sm:min-h-0 sm:min-w-0" aria-label={`Xóa ${asset.ticker}`}><Trash2 size={15} /></button></div>;
+  return <div className="asset-row relative grid gap-3 px-5 py-4 pr-14 sm:grid-cols-[1.5fr_0.8fr_0.8fr_0.8fr_28px] sm:items-center sm:gap-4 sm:px-6"><div className="flex min-w-0 items-center gap-3"><div className={`ticker-badge ${liveAsset.kind === "Vàng" ? "gold" : liveAsset.kind === "Chứng chỉ quỹ" ? "fund" : "stock"}`}>{liveAsset.ticker.replace(".VN", "").replace("=F", "").slice(0, 4)}</div><div className="min-w-0"><p className="truncate text-sm font-semibold text-[#2c3e32]">{liveAsset.name}</p><p className="mt-0.5 truncate text-[11px] text-[#95a199]">{liveAsset.ticker} · {liveAsset.kind}</p></div></div><div className="flex items-center justify-between sm:block"><span className="text-[10px] uppercase tracking-[0.12em] text-[#a0aaa4] sm:hidden">Giá</span><p className="text-sm font-semibold text-[#304439]">{isLoadingQuote ? "Đang tải" : formatPrice(liveAsset)} <span className="text-[10px] font-medium text-[#9da8a1]">{liveAsset.currency}</span></p></div><div className="flex items-center justify-between sm:block"><span className="text-[10px] uppercase tracking-[0.12em] text-[#a0aaa4] sm:hidden">Biến động</span><p className={`flex items-center gap-1 text-sm font-semibold ${hasChange && liveAsset.change! >= 0 ? "text-[#2d8961]" : hasChange ? "text-[#c45e54]" : "text-[#909d95]"}`}>{hasChange && (liveAsset.change! >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />)}{formatChange(liveAsset)}</p></div><div className="flex items-center justify-between sm:block"><span className="text-[10px] uppercase tracking-[0.12em] text-[#a0aaa4] sm:hidden">Trạng thái</span><Badge variant="outline" className="rounded-full border-[#dce8df] bg-[#f6faf7] text-[10px] font-medium text-[#65806f]">{getAssetStatusLabel({ isLoading: isLoadingQuote, hasError: quoteError, hasChange })}</Badge></div><button onClick={() => onRemove(asset.ticker)} className="absolute right-4 top-4 grid min-h-11 min-w-11 place-items-center rounded-full text-[#b2bdb6] transition hover:bg-[#f3f7f3] hover:text-[#bd5e54] sm:static sm:min-h-0 sm:min-w-0" aria-label={`Xóa ${asset.ticker}`}><Trash2 size={15} /></button></div>;
 }

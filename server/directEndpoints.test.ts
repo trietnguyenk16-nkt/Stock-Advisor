@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import aiConfig from "../api/ai/config";
-import aiModel from "../api/ai/model";
+import aiModel, { classifyPersistenceError } from "../api/ai/model";
 import marketQuote from "../api/market/quote";
 import marketHistory from "../api/market/history";
 import marketSync from "../api/market/sync";
+import marketAssets from "../api/market/assets";
 import pushConfig from "../api/push/config";
 
 const originalOpenAiKey = process.env.OPENAI_API_KEY;
@@ -41,13 +42,28 @@ describe("direct Vercel endpoint contracts", () => {
     expect(harness.read().error).toContain("không được hỗ trợ");
   });
 
-  it("returns structured 503 when model persistence is unavailable", async () => {
+  it("returns structured 503 when model database URL is unavailable", async () => {
+    delete process.env.SUPABASE_DATABASE_URL;
+    delete process.env.DATABASE_URL;
     const harness = responseHarness();
-    const dbModule = await import("../server/db");
-    vi.spyOn(dbModule, "setAiModel").mockResolvedValue(undefined);
     await aiModel({ body: { model: "gpt-5-mini" } } as any, harness.res as any);
     expect(harness.res.statusCode).toBe(503);
-    expect(harness.read()).toMatchObject({ code: "DATABASE_UNAVAILABLE", persisted: false, model: "gpt-5-mini" });
+    expect(harness.read()).toMatchObject({ code: "DATABASE_URL_MISSING", persisted: false, model: "gpt-5-mini" });
+  });
+
+  it("classifies model persistence database failures", () => {
+    expect(classifyPersistenceError(new Error("permission denied for schema stock_advisor")).code).toBe("SCHEMA_PERMISSION_DENIED");
+    expect(classifyPersistenceError(new Error("relation stock_advisor.ai_settings does not exist")).code).toBe("AI_SETTINGS_TABLE_MISSING");
+    expect(classifyPersistenceError(new Error("connection refused")).code).toBe("AI_SETTINGS_PERSIST_FAILED");
+  });
+
+  it("returns structured error when asset persistence has no database configuration", async () => {
+    delete process.env.SUPABASE_DATABASE_URL;
+    delete process.env.DATABASE_URL;
+    const harness = responseHarness();
+    await marketAssets({ method: "POST", body: { ticker: "VNM.VN", displayName: "Vinamilk", assetType: "equity", providerCode: "VNM.VN" } } as any, harness.res as any);
+    expect(harness.res.statusCode).toBe(503);
+    expect(harness.read()).toMatchObject({ code: "DATABASE_URL_MISSING" });
   });
 
   it("returns structured JSON when manual sync has no database configuration", async () => {
@@ -67,18 +83,18 @@ describe("direct Vercel endpoint contracts", () => {
     expect(await response.json()).toMatchObject({ ticker: "VNM.VN", price: 70000 });
   });
 
-  it("reads a raw Node request body for model persistence", async () => {
+  it("reads a raw Node request body before returning configuration errors", async () => {
+    delete process.env.SUPABASE_DATABASE_URL;
+    delete process.env.DATABASE_URL;
     const listeners = new Map<string, (...args: any[]) => void>();
     const request = { on(event: string, listener: (...args: any[]) => void) { listeners.set(event, listener); return request; } };
     const harness = responseHarness();
-    const dbModule = await import("../server/db");
-    vi.spyOn(dbModule, "setAiModel").mockResolvedValue({ id: 1, workspaceKey: "owner", model: "gpt-5-mini", updatedAt: new Date() } as any);
     const promise = aiModel(request as any, harness.res as any);
     listeners.get("data")?.(Buffer.from('{"model":"gpt-5-mini"}'));
     listeners.get("end")?.();
     await promise;
-    expect(harness.res.statusCode).toBe(200);
-    expect(harness.read()).toMatchObject({ ok: true, model: "gpt-5-mini", persisted: true });
+    expect(harness.res.statusCode).toBe(503);
+    expect(harness.read()).toMatchObject({ code: "DATABASE_URL_MISSING", model: "gpt-5-mini" });
   });
 
   it("serves quote GET with the expected normalized response", async () => {

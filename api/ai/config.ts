@@ -8,11 +8,18 @@ export default async function handler(req: AnyRequest, res?: AnyResponse) {
   void req;
   let model: (typeof AI_MODELS)[number] = DEFAULT_MODEL;
   try {
-    const { getAiModel } = await import("../../server/db");
-    const configured = await getAiModel();
-    if (AI_MODELS.includes(configured as (typeof AI_MODELS)[number])) model = configured as (typeof AI_MODELS)[number];
+    const connectionString = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
+    if (connectionString) {
+      const { Pool } = await import("pg");
+      const pool = new Pool({ connectionString: connectionString.replace(/([?&])sslmode=[^&]*/i, "$1").replace(/[?&]$/, ""), ssl: { rejectUnauthorized: false }, max: 1, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 10_000 });
+      try {
+        const result = await pool.query(`SELECT model FROM stock_advisor.ai_settings WHERE workspace_key = 'owner' LIMIT 1`);
+        if (AI_MODELS.includes(result.rows[0]?.model)) model = result.rows[0].model;
+      } finally { await pool.end().catch(() => undefined); }
+    }
+    return send(res, { enabled: Boolean(process.env.OPENAI_API_KEY), model, models: AI_MODELS });
   } catch (error) {
     console.warn("[api/ai/config] database fallback", error instanceof Error ? error.message : error);
+    return send(res, { enabled: Boolean(process.env.OPENAI_API_KEY), model, models: AI_MODELS });
   }
-  return send(res, { enabled: Boolean(process.env.OPENAI_API_KEY), model, models: AI_MODELS });
 }

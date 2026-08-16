@@ -17,4 +17,6 @@ export const directApi = {
   pushConfig: () => requestJson<{ enabled: boolean; publicKey: string | null }>("/api/push/config"),
   pushSubscribe: (subscription: { endpoint: string; keys: { p256dh: string; auth: string } }) => requestJson<{ ok: boolean }>("/api/push/subscribe", { method: "POST", body: JSON.stringify(subscription) }),
   pushUnsubscribe: (endpoint: string) => requestJson<{ ok: boolean }>("/api/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint }) }),
+  addAsset: (asset: { ticker: string; displayName: string; assetType: "equity" | "fund" | "gold"; providerCode: string }) => requestJson<{ ok: boolean; asset: unknown }>("/api/market/assets", { method: "POST", body: JSON.stringify(asset) }),
+  removeAsset: (ticker: string) => requestJson<{ ok: boolean }>(`/api/market/assets?ticker=${encodeURIComponent(ticker)}`, { method: "DELETE" }),
 };

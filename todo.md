@@ -165,3 +165,11 @@
 - [x] Loại bỏ dynamic import `server/manualSync.ts` vì Vercel không bundle module này
 - [x] Đưa phần direct manual sync tối thiểu vào API tự chứa: claim sync, đọc tài sản, lấy quote Yahoo và ghi `price_snapshots`/`sync_runs`; pipeline news/AI/email/push cũ vẫn giữ ở scheduled/CLI path
 - [ ] Chạy validation, push commit cuối và checkpoint; nếu còn lỗi sau redeploy thì dừng
+
+- [x] Chẩn đoán 503 `/api/ai/model`: phân biệt thiếu Supabase URL, lỗi quyền/schema và lỗi bảng `ai_settings` bằng mã `DATABASE_URL_MISSING`, `SCHEMA_PERMISSION_DENIED`, `AI_SETTINGS_TABLE_MISSING` hoặc `AI_SETTINGS_PERSIST_FAILED`
+- [x] Làm thông báo lỗi persistence rõ ràng và chuyển model/config sang direct PostgreSQL, không phụ thuộc owner bootstrap
+- [x] Chạy validation 36 tests/typecheck/build và chuẩn bị phát hành; nếu response live còn mã database thì cần cấu hình Vercel/Supabase và dừng
+
+- [x] Kiểm tra tài sản mới có được lưu vào `tracked_assets` và được direct manual sync đọc lại hay không
+- [x] Sửa frontend refresh để cập nhật quote/status của tài sản sau sync thành công
+- [x] Thêm contract test cho asset persistence và test helper xác nhận badge chuyển từ `Chờ đồng bộ` sang `Đã cập nhật`; live Supabase/Vercel cần redeploy để xác minh
