@@ -216,4 +216,4 @@
 - [x] Audit all dashboard price/change/AI numeric formatters for null/undefined safety
 - [x] Add regression tests for null market values and AI analysis numeric fields
 - [x] Run 50+ tests, typecheck, production build and visual smoke check
-- [ ] Push crash fix to GitHub and save a new checkpoint; user must redeploy Vercel
+- [x] Push crash fix to GitHub và save a new checkpoint; user must redeploy Vercel
