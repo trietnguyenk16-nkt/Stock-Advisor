@@ -23,7 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { directApi, type AiConfig, type PortfolioAnalysis, type Quote } from "@/lib/directApi";
+import { directApi, normalizeAiAnalysisResponse, SYNC_COMPLETE_EVENT, type AiConfig, type PortfolioAnalysis, type Quote } from "@/lib/directApi";
 import { getAssetStatusLabel } from "@/lib/assetStatus";
 import { Input } from "@/components/ui/input";
 import { Link } from "wouter";
@@ -98,10 +98,11 @@ export default function Home() {
     try {
       const result = await directApi.analyzeAi(selectedAiModel);
       if (!result.ok && result.analyzed === 0) throw new Error(result.errors?.[0] ?? "Không tạo được phân tích");
-      const analyses = Array.isArray(result.results) ? result.results : [];
-      const analyzedCount = Number.isFinite(Number(result.analyzed)) ? Number(result.analyzed) : analyses.length;
-      const skippedCount = Number.isFinite(Number(result.skipped)) ? Number(result.skipped) : Math.max(0, assets.length - analyzedCount);
-      const modelUsed = result.model || selectedAiModel;
+      const normalized = normalizeAiAnalysisResponse(result, selectedAiModel, assets.length);
+      const analyses = normalized.results;
+      const analyzedCount = normalized.analyzed;
+      const skippedCount = normalized.skipped;
+      const modelUsed = normalized.model;
       setAiAnalyses(analyses);
       setLastAiResult(`${analyzedCount} tài sản đã phân tích${skippedCount ? ` · ${skippedCount} tài sản chờ dữ liệu` : ""}`);
       toast.success("Đã hoàn tất phân tích AI", { description: `${analyzedCount} tài sản được cập nhật bằng ${modelUsed}.` });
@@ -179,6 +180,7 @@ export default function Home() {
       const result = await directApi.sync();
       if (result.status === "failed") throw new Error(result.message ?? "Manual sync failed");
       setQuoteVersion((value) => value + 1);
+      window.dispatchEvent(new Event(SYNC_COMPLETE_EVENT));
       setLastUpdated(new Date().toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }));
       toast.success("Đã đồng bộ dữ liệu", { description: "Giá và trạng thái AI đã được làm mới." });
     } catch (error) {
