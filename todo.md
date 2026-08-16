@@ -252,4 +252,4 @@
 - [x] Implement priority issue #24: Watchlist source column
 - [x] Implement priority issue #25: detailed per-asset sync history
 - [x] Implement priority issue #26: selected-date historical comparison
-- [ ] Validate, commit/push priority issues, tag #22-#26 DONE, and checkpoint
+- [x] Validate, commit/push priority issues, tag #22-#26 DONE, and checkpoint
