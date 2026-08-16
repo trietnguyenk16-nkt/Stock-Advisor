@@ -1,6 +1,6 @@
 export type AssetKind = "Cổ phiếu" | "Chứng chỉ quỹ" | "Vàng";
 
-export type Asset = { ticker: string; name: string; kind: AssetKind; currency: string; providerCode?: string; price?: number | null; change?: number | null };
+export type Asset = { ticker: string; name: string; kind: AssetKind; currency: string; providerCode?: string; price?: number | null; bid?: number | null; ask?: number | null; change?: number | null; source?: string; sourceUrl?: string; changeBasis?: string };
 export type CatalogAsset = { ticker: string; name: string; kind: AssetKind; providerCode: string; currency: string; description: string; source?: string };
 
 /**

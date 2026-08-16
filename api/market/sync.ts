@@ -4,7 +4,7 @@ function send(res: AnyResponse | undefined, body: unknown, status = 200) { if (!
 
 type Asset = { id: number; ticker: string; display_name: string; asset_type: "equity" | "fund" | "gold"; provider_code: string; currency: string };
 
-type Quote = { price: number; change: number | null; sourceName: string; sourceUrl: string; freshness: string };
+type Quote = { price: number; bid?: number; ask?: number; change: number | null; sourceName: string; sourceUrl: string; freshness: string };
 
 function parseNumber(value: string) { const cleaned = value.replace(/[^0-9,.-]/g, "").trim(); if (!cleaned) return undefined; const normalized = cleaned.includes(",") && cleaned.includes(".") ? (cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".") ? cleaned.replace(/\\./g, "").replace(",", ".") : cleaned.replace(/,/g, "")) : cleaned.includes(",") ? cleaned.replace(/,/g, ".") : /^\\d+\\.\\d{3}$/.test(cleaned) ? cleaned.replace(".", "") : cleaned; const result = Number(normalized); return Number.isFinite(result) ? result : undefined; }
 
@@ -36,7 +36,7 @@ async function fetchQuote(asset: Asset): Promise<Quote> {
       const payload = await response.json() as any;
       const sjc = (payload?.data ?? []).find((row: any) => String(row?.masp ?? "").toUpperCase() === "SJC");
       const bid = Number(sjc?.giamua); const ask = Number(sjc?.giaban);
-      if (Number.isFinite(bid) && Number.isFinite(ask)) return { price: ask * 1000, change: null, sourceName: "PNJ SJC API", sourceUrl: url, freshness: "fresh" };
+      if (Number.isFinite(bid) && Number.isFinite(ask)) return { price: ask * 1000, bid: bid * 1000, ask: ask * 1000, change: null, sourceName: "PNJ SJC API", sourceUrl: url, freshness: "fresh" };
       throw new Error("PNJ không trả về dòng SJC hợp lệ");
     } catch (error) { errors.push(`PNJ API: ${error instanceof Error ? error.message : String(error)}`); }
     const sources = [{ name: "SJC", url: "https://sjc.com.vn/" }, { name: "PNJ", url: "https://www.pnj.com.vn/site/gia-vang" }, { name: "DOJI", url: "https://doji.vn/" }];
@@ -53,7 +53,7 @@ async function runInlineSync(runKey: string) {
   const { Pool } = await import("pg");
   const pool = new Pool({ connectionString: connectionString.replace(/([?&])sslmode=[^&]*/i, "$1").replace(/[?&]$/, ""), ssl: { rejectUnauthorized: false }, max: 1, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 10_000 });
   try {
-    await pool.query(`CREATE SCHEMA IF NOT EXISTS stock_advisor; CREATE TABLE IF NOT EXISTS stock_advisor.tracked_assets (id BIGSERIAL PRIMARY KEY, workspace_key VARCHAR(96) NOT NULL DEFAULT 'owner', ticker VARCHAR(32) NOT NULL, display_name VARCHAR(255) NOT NULL, asset_type VARCHAR(16) NOT NULL, provider_code VARCHAR(64) NOT NULL, currency VARCHAR(8) NOT NULL DEFAULT 'VND', unit VARCHAR(32) NOT NULL DEFAULT 'share', is_active BOOLEAN NOT NULL DEFAULT true, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE(workspace_key, ticker)); CREATE TABLE IF NOT EXISTS stock_advisor.sync_runs (id BIGSERIAL PRIMARY KEY, run_key VARCHAR(96) NOT NULL UNIQUE, status VARCHAR(16) NOT NULL, started_at BIGINT NOT NULL, finished_at BIGINT, assets_processed INTEGER NOT NULL DEFAULT 0, assets_succeeded INTEGER NOT NULL DEFAULT 0, error_message TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now()); CREATE TABLE IF NOT EXISTS stock_advisor.price_snapshots (id BIGSERIAL PRIMARY KEY, asset_id BIGINT NOT NULL, run_key VARCHAR(96) NOT NULL, price NUMERIC(20,6) NOT NULL, change_percent NUMERIC(10,4), as_of BIGINT NOT NULL, source_name VARCHAR(128) NOT NULL, source_url VARCHAR(1024) NOT NULL, freshness VARCHAR(32) NOT NULL DEFAULT 'unknown', warning TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE(run_key, asset_id));`);
+    await pool.query(`CREATE SCHEMA IF NOT EXISTS stock_advisor; CREATE TABLE IF NOT EXISTS stock_advisor.tracked_assets (id BIGSERIAL PRIMARY KEY, workspace_key VARCHAR(96) NOT NULL DEFAULT 'owner', ticker VARCHAR(32) NOT NULL, display_name VARCHAR(255) NOT NULL, asset_type VARCHAR(16) NOT NULL, provider_code VARCHAR(64) NOT NULL, currency VARCHAR(8) NOT NULL DEFAULT 'VND', unit VARCHAR(32) NOT NULL DEFAULT 'share', is_active BOOLEAN NOT NULL DEFAULT true, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE(workspace_key, ticker)); CREATE TABLE IF NOT EXISTS stock_advisor.sync_runs (id BIGSERIAL PRIMARY KEY, run_key VARCHAR(96) NOT NULL UNIQUE, status VARCHAR(16) NOT NULL, started_at BIGINT NOT NULL, finished_at BIGINT, assets_processed INTEGER NOT NULL DEFAULT 0, assets_succeeded INTEGER NOT NULL DEFAULT 0, error_message TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now()); CREATE TABLE IF NOT EXISTS stock_advisor.price_snapshots (id BIGSERIAL PRIMARY KEY, asset_id BIGINT NOT NULL, run_key VARCHAR(96) NOT NULL, price NUMERIC(20,6) NOT NULL, change_percent NUMERIC(10,4), as_of BIGINT NOT NULL, source_name VARCHAR(128) NOT NULL, source_url VARCHAR(1024) NOT NULL, freshness VARCHAR(32) NOT NULL DEFAULT 'unknown', warning TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE(run_key, asset_id)); ALTER TABLE stock_advisor.price_snapshots ADD COLUMN IF NOT EXISTS bid NUMERIC(20,6); ALTER TABLE stock_advisor.price_snapshots ADD COLUMN IF NOT EXISTS ask NUMERIC(20,6); CREATE TABLE IF NOT EXISTS stock_advisor.sync_run_assets (id BIGSERIAL PRIMARY KEY, run_key VARCHAR(96) NOT NULL, asset_id BIGINT NOT NULL, ticker VARCHAR(32) NOT NULL, display_name VARCHAR(255) NOT NULL, status VARCHAR(16) NOT NULL, previous_price NUMERIC(20,6), price NUMERIC(20,6), bid NUMERIC(20,6), ask NUMERIC(20,6), change_percent NUMERIC(12,6), source_name VARCHAR(128), source_url VARCHAR(1024), as_of BIGINT, message TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE(run_key, asset_id));`);
     const startedAt = Date.now();
     const claim = await pool.query(`INSERT INTO stock_advisor.sync_runs (run_key, status, started_at) VALUES ($1, 'running', $2) ON CONFLICT (run_key) DO NOTHING RETURNING run_key`, [runKey, startedAt]);
     if (claim.rowCount !== 1) return { ok: true, skipped: true, status: "deduplicated", runKey };
@@ -62,10 +62,18 @@ async function runInlineSync(runKey: string) {
     let succeeded = 0;
     for (const asset of assets) {
       try {
+        const previous = await pool.query<{ price: string | null }>(`SELECT price FROM stock_advisor.price_snapshots WHERE asset_id=$1 ORDER BY as_of DESC LIMIT 1`, [asset.id]);
+        const previousPrice = previous.rows[0]?.price ?? null;
         const quote = await fetchQuote(asset);
-        await pool.query(`INSERT INTO stock_advisor.price_snapshots (asset_id, run_key, price, change_percent, as_of, source_name, source_url, freshness) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (run_key, asset_id) DO NOTHING`, [asset.id, runKey, quote.price, quote.change, Date.now(), quote.sourceName, quote.sourceUrl, quote.freshness]);
+        const asOf = Date.now();
+        await pool.query(`INSERT INTO stock_advisor.price_snapshots (asset_id, run_key, price, bid, ask, change_percent, as_of, source_name, source_url, freshness) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (run_key, asset_id) DO NOTHING`, [asset.id, runKey, quote.price, quote.bid ?? null, quote.ask ?? null, quote.change, asOf, quote.sourceName, quote.sourceUrl, quote.freshness]);
+        await pool.query(`INSERT INTO stock_advisor.sync_run_assets (run_key, asset_id, ticker, display_name, status, previous_price, price, bid, ask, change_percent, source_name, source_url, as_of) VALUES ($1,$2,$3,$4,'success',$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT (run_key, asset_id) DO UPDATE SET status=EXCLUDED.status, previous_price=EXCLUDED.previous_price, price=EXCLUDED.price, bid=EXCLUDED.bid, ask=EXCLUDED.ask, change_percent=EXCLUDED.change_percent, source_name=EXCLUDED.source_name, source_url=EXCLUDED.source_url, as_of=EXCLUDED.as_of, message=NULL`, [runKey, asset.id, asset.ticker, asset.display_name, previousPrice, quote.price, quote.bid ?? null, quote.ask ?? null, quote.change, quote.sourceName, quote.sourceUrl, asOf]);
         succeeded += 1;
-      } catch (error) { errors.push(`${asset.ticker}: ${error instanceof Error ? error.message : String(error)}`); }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        errors.push(`${asset.ticker}: ${message}`);
+        await pool.query(`INSERT INTO stock_advisor.sync_run_assets (run_key, asset_id, ticker, display_name, status, message) VALUES ($1,$2,$3,$4,'failed',$5) ON CONFLICT (run_key, asset_id) DO UPDATE SET status=EXCLUDED.status, message=EXCLUDED.message`, [runKey, asset.id, asset.ticker, asset.display_name, message.slice(0, 2000)]).catch(() => undefined);
+      }
     }
     const status = errors.length === 0 ? "success" : succeeded > 0 ? "partial" : "failed";
     await pool.query(`UPDATE stock_advisor.sync_runs SET status=$2, finished_at=$3, assets_processed=$4, assets_succeeded=$5, error_message=$6 WHERE run_key=$1`, [runKey, status, Date.now(), assets.length, succeeded, errors.length ? errors.join("\n").slice(0, 4000) : null]);

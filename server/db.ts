@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
 import { Pool } from "pg";
 import { ENV } from "./_core/env";
-import { InsertUser, aiSettings, assetAnalyses, emailDeliveries, newsItems, priceSnapshots, pushSubscriptions, syncRuns, trackedAssets, users } from "../drizzle/schema";
+import { InsertUser, aiSettings, assetAnalyses, emailDeliveries, newsItems, priceSnapshots, pushSubscriptions, syncRunAssets, syncRuns, trackedAssets, users } from "../drizzle/schema";
 
 type Database = ReturnType<typeof drizzle>;
 let _pool: Pool | null = null;
@@ -105,6 +105,19 @@ export async function insertPriceSnapshot(values: typeof priceSnapshots.$inferIn
   const db = await getDb();
   if (!db) return;
   await db.insert(priceSnapshots).values(values).onConflictDoUpdate({ target: [priceSnapshots.runKey, priceSnapshots.assetId], set: { asOf: values.asOf, price: values.price, bid: values.bid, ask: values.ask, changePercent: values.changePercent, sourceName: values.sourceName, sourceUrl: values.sourceUrl, freshness: values.freshness, warning: values.warning } });
+}
+
+export async function getLatestPriceSnapshot(assetId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(priceSnapshots).where(eq(priceSnapshots.assetId, assetId)).orderBy(desc(priceSnapshots.asOf)).limit(1);
+  return rows[0];
+}
+
+export async function recordSyncRunAsset(values: typeof syncRunAssets.$inferInsert) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(syncRunAssets).values(values).onConflictDoUpdate({ target: [syncRunAssets.runKey, syncRunAssets.assetId], set: { status: values.status, previousPrice: values.previousPrice, price: values.price, bid: values.bid, ask: values.ask, changePercent: values.changePercent, sourceName: values.sourceName, sourceUrl: values.sourceUrl, asOf: values.asOf, message: values.message } });
 }
 
 export async function insertNewsItem(values: typeof newsItems.$inferInsert) {

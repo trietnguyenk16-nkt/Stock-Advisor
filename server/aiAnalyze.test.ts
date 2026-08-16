@@ -6,6 +6,8 @@ describe("portfolio AI analysis contract", () => {
     expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("BUY, SELL hoặc HOLD");
     expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("giá mục tiêu");
     expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("tin tức");
+    expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("bản tin kinh tế uy tín");
+    expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("không dùng nguồn không có trong payload");
     expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("HOLD");
     expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("không phải tư vấn đầu tư");
   });

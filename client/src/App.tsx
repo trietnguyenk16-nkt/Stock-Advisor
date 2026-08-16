@@ -1,9 +1,6 @@
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import History from "./pages/History";
 import PwaInstallPrompt from "./components/PwaInstallPrompt";
@@ -29,23 +26,15 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-        // switchable
-      >
-        <TooltipProvider>
-          <Toaster />
-          <PwaInstallPrompt />
-          <Router />
-        </TooltipProvider>
-      </ThemeProvider>
+      <PwaInstallPrompt />
+      <Router />
     </ErrorBoundary>
   );
 }
 
 export default App;
 
-if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+if (typeof window !== "undefined" && "serviceWorker" in navigator && !import.meta.env.DEV) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch((error) => {
       console.warn("[PWA] Service worker registration failed", error);

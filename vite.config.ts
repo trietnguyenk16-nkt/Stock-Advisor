@@ -155,7 +155,13 @@ const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(
 export default defineConfig({
   plugins,
   resolve: {
+    dedupe: ["react", "react-dom"],
     alias: {
+      "react/jsx-runtime": path.resolve(import.meta.dirname, "node_modules", "react", "jsx-runtime.js"),
+      "react/jsx-dev-runtime": path.resolve(import.meta.dirname, "node_modules", "react", "jsx-dev-runtime.js"),
+      "react-dom/client": path.resolve(import.meta.dirname, "node_modules", "react-dom", "client.js"),
+      "react": path.resolve(import.meta.dirname, "node_modules", "react", "index.js"),
+      "react-dom": path.resolve(import.meta.dirname, "node_modules", "react-dom", "index.js"),
       "@": path.resolve(import.meta.dirname, "client", "src"),
       "@shared": path.resolve(import.meta.dirname, "shared"),
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),

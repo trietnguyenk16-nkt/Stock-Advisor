@@ -1,4 +1,4 @@
-import { bigint, boolean, decimal, index, integer, pgSchema, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+import { bigint, boolean, decimal, index, integer, jsonb, pgSchema, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 
 export const stockAdvisor = pgSchema("stock_advisor");
 
@@ -95,6 +95,28 @@ export const syncRuns = stockAdvisor.table("sync_runs", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const syncRunAssets = stockAdvisor.table("sync_run_assets", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  runKey: varchar("run_key", { length: 96 }).notNull(),
+  assetId: bigint("asset_id", { mode: "number" }).notNull().references(() => trackedAssets.id, { onDelete: "cascade" }),
+  ticker: varchar("ticker", { length: 32 }).notNull(),
+  displayName: varchar("display_name", { length: 255 }).notNull(),
+  status: varchar("status", { length: 16 }).notNull(),
+  previousPrice: decimal("previous_price", { precision: 20, scale: 6 }),
+  price: decimal("price", { precision: 20, scale: 6 }),
+  bid: decimal("bid", { precision: 20, scale: 6 }),
+  ask: decimal("ask", { precision: 20, scale: 6 }),
+  changePercent: decimal("change_percent", { precision: 12, scale: 6 }),
+  sourceName: varchar("source_name", { length: 128 }),
+  sourceUrl: varchar("source_url", { length: 1024 }),
+  asOf: bigint("as_of", { mode: "number" }),
+  message: text("message"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  runAssetUnique: uniqueIndex("sync_run_assets_run_asset_unique").on(table.runKey, table.assetId),
+  runKeyIndex: index("sync_run_assets_run_key_index").on(table.runKey),
+}));
+
 export const pushSubscriptions = stockAdvisor.table("push_subscriptions", {
   id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
   workspaceKey: varchar("workspace_key", { length: 96 }).notNull().default("owner"),
@@ -115,6 +137,26 @@ export const aiSettings = stockAdvisor.table("ai_settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const aiAdviceRuns = stockAdvisor.table("ai_advice_runs", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  runKey: varchar("run_key", { length: 96 }).notNull().unique(),
+  workspaceKey: varchar("workspace_key", { length: 96 }).notNull().default("owner"),
+  requestedTicker: varchar("requested_ticker", { length: 32 }),
+  additionalRequirement: text("additional_requirement"),
+  model: varchar("model", { length: 64 }).notNull(),
+  status: varchar("status", { length: 16 }).notNull(),
+  assetsRequested: integer("assets_requested").notNull().default(0),
+  assetsAnalyzed: integer("assets_analyzed").notNull().default(0),
+  assetsSkipped: integer("assets_skipped").notNull().default(0),
+  errorMessage: text("error_message"),
+  responseJson: jsonb("response_json"),
+  startedAt: bigint("started_at", { mode: "number" }).notNull(),
+  finishedAt: bigint("finished_at", { mode: "number" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  workspaceStartedIndex: index("ai_advice_runs_workspace_started_index").on(table.workspaceKey, table.startedAt),
+}));
+
 export const emailDeliveries = stockAdvisor.table("email_deliveries", {
   id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
   runKey: varchar("run_key", { length: 96 }).notNull().unique(),
@@ -134,5 +176,7 @@ export type PriceSnapshot = typeof priceSnapshots.$inferSelect;
 export type NewsItem = typeof newsItems.$inferSelect;
 export type AssetAnalysis = typeof assetAnalyses.$inferSelect;
 export type SyncRun = typeof syncRuns.$inferSelect;
+export type SyncRunAsset = typeof syncRunAssets.$inferSelect;
 export type EmailDelivery = typeof emailDeliveries.$inferSelect;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+export type AiAdviceRun = typeof aiAdviceRuns.$inferSelect;

@@ -15,6 +15,13 @@
       "when": 1786809176791,
       "tag": "0001_short_salo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786873451889,
+      "tag": "0002_mature_blonde_phantom",
+      "breakpoints": true
     }
   ]
 }

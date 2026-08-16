@@ -1,7 +1,8 @@
 export type AiConfig = { enabled: boolean; model: "gpt-4o-mini" | "gpt-5-mini"; models: readonly string[] };
-export type Quote = { ticker: string; name: string; currency: string; price?: number | null; change?: number | null; asOf: string; source: string };
+export type Quote = { ticker: string; name: string; currency: string; price?: number | null; bid?: number | null; ask?: number | null; change?: number | null; changeBasis?: string; asOf: string; source: string; sourceUrl?: string };
 export type PortfolioAnalysis = { ticker: string; name: string; signal: "BUY" | "SELL" | "HOLD"; summary: string; referencePrice: number | null; targetPrice: number | null; risk: string; confidence: number | null; news: Array<{ title: string; publisher: string; link: string; publishedAt: string | null }> };
-export type AiAnalysisResponse = { ok?: boolean; status?: string; model?: AiConfig["model"]; analyzed?: number; skipped?: number; results?: PortfolioAnalysis[]; errors?: string[] };
+export type AiAnalysisResponse = { ok?: boolean; status?: string; model?: AiConfig["model"]; analyzed?: number; skipped?: number; results?: PortfolioAnalysis[]; errors?: string[]; code?: string; message?: string };
+export type MarketHistory = { ok?: boolean; syncRuns: any[]; syncAssets: any[]; emailDeliveries: any[]; aiAdviceRuns: any[]; comparisons: Array<{ ticker: string; date: string; price: number | null; asOf: number | null; sourceName: string | null; sourceUrl: string | null }> };
 
 export function normalizeAiAnalysisResponse(payload: AiAnalysisResponse, fallbackModel: AiConfig["model"], assetCount: number) {
   const results = Array.isArray(payload.results) ? payload.results : [];
@@ -28,10 +29,10 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 export const directApi = {
   aiConfig: () => requestJson<AiConfig>("/api/ai/config"),
   saveAiModel: (model: AiConfig["model"]) => requestJson<{ ok: boolean; model: AiConfig["model"]; persisted: boolean }>("/api/ai/model", { method: "POST", body: JSON.stringify({ model }) }),
-  analyzeAi: (model?: AiConfig["model"]) => requestJson<AiAnalysisResponse>("/api/ai/analyze", { method: "POST", body: JSON.stringify(model ? { model } : {}) }),
+  analyzeAi: (model?: AiConfig["model"], requirement?: string) => requestJson<AiAnalysisResponse>("/api/ai/analyze", { method: "POST", body: JSON.stringify({ ...(model ? { model } : {}), ...(requirement?.trim() ? { requirement: requirement.trim() } : {}) }) }),
   quote: (ticker: string) => requestJson<Quote>(`/api/market/quote?ticker=${encodeURIComponent(ticker)}`),
   sync: () => requestJson<{ status?: string; message?: string }>("/api/market/sync", { method: "POST" }),
-  history: () => requestJson<{ syncRuns: any[]; emailDeliveries: any[] }>("/api/market/history"),
+  history: (date?: string) => requestJson<MarketHistory>(`/api/market/history${date ? `?date=${encodeURIComponent(date)}` : ""}`),
   pushConfig: () => requestJson<{ enabled: boolean; publicKey: string | null }>("/api/push/config"),
   pushSubscribe: (subscription: { endpoint: string; keys: { p256dh: string; auth: string } }) => requestJson<{ ok: boolean }>("/api/push/subscribe", { method: "POST", body: JSON.stringify(subscription) }),
   pushUnsubscribe: (endpoint: string) => requestJson<{ ok: boolean }>("/api/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint }) }),

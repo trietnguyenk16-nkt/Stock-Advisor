@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   sendPushNotification: vi.fn(),
   fetchVietnamQuote: vi.fn(),
   fetchVietnamNews: vi.fn(),
+  getLatestPriceSnapshot: vi.fn(),
+  recordSyncRunAsset: vi.fn(),
 }));
 
 vi.mock("./openai", () => ({
@@ -30,6 +32,8 @@ vi.mock("./db", () => ({
   insertAssetAnalysis: mocks.insertAssetAnalysis,
   getEmailDelivery: mocks.getEmailDelivery,
   recordEmailDelivery: mocks.recordEmailDelivery,
+  getLatestPriceSnapshot: mocks.getLatestPriceSnapshot,
+  recordSyncRunAsset: mocks.recordSyncRunAsset,
 }));
 vi.mock("./vietnamProviders", () => ({ fetchVietnamQuote: mocks.fetchVietnamQuote, fetchVietnamNews: mocks.fetchVietnamNews }));
 vi.mock("./push", () => ({ sendPushNotification: mocks.sendPushNotification }));
@@ -42,6 +46,7 @@ describe("syncMarket AI model handoff", () => {
     mocks.createSyncRun.mockResolvedValue({ claimed: true });
     mocks.getTrackedAssets.mockResolvedValue([{ id: 7, ticker: "VNM.VN", displayName: "Vinamilk", assetType: "stock" }]);
     mocks.fetchVietnamQuote.mockResolvedValue({ price: 62000, changePercent: 1.2, sourceName: "test", asOf: Date.now() });
+    mocks.getLatestPriceSnapshot.mockResolvedValue({ price: "61000" });
     mocks.fetchVietnamNews.mockResolvedValue([]);
     mocks.analyze.mockResolvedValue({ signal: "HOLD", summary: "test", referencePrice: 62000, targetPrice: 63000, risk: "test", confidence: 0.5 });
     mocks.getEmailDelivery.mockResolvedValue(undefined);
@@ -52,5 +57,6 @@ describe("syncMarket AI model handoff", () => {
     expect(mocks.analyze).toHaveBeenCalledWith("gpt-5-mini", expect.objectContaining({ asset: expect.objectContaining({ ticker: "VNM.VN" }) }));
     expect(result.status).toBe("success");
     expect(mocks.finishSyncRun).toHaveBeenCalled();
+    expect(mocks.recordSyncRunAsset).toHaveBeenCalledWith(expect.objectContaining({ ticker: "VNM.VN", previousPrice: "61000", price: "62000" }));
   }, 15000);
 });

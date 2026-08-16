@@ -1,4 +1,4 @@
-import { getAiModel, getTrackedAssets, createSyncRun, finishSyncRun, getEmailDelivery, insertAssetAnalysis, insertNewsItem, insertPriceSnapshot, recordEmailDelivery } from "./db";
+import { getAiModel, getTrackedAssets, createSyncRun, finishSyncRun, getEmailDelivery, getLatestPriceSnapshot, insertAssetAnalysis, insertNewsItem, insertPriceSnapshot, recordEmailDelivery, recordSyncRunAsset } from "./db";
 import { fetchVietnamNews, fetchVietnamQuote } from "./vietnamProviders";
 import { sendPushNotification } from "./push";
 import { analyzeAssetWithOpenAI, getConfiguredAiModel } from "./openai";
@@ -47,8 +47,10 @@ export async function syncMarket(runKey: string) {
   const errors: string[] = [];
   for (const asset of assets) {
     try {
+      const previous = await getLatestPriceSnapshot(asset.id);
       const quote = await fetchVietnamQuote(asset);
       await insertPriceSnapshot({ assetId: asset.id, runKey, price: quote.price?.toString(), bid: quote.bid?.toString(), ask: quote.ask?.toString(), changePercent: quote.changePercent?.toString(), asOf: quote.asOf, sourceName: quote.sourceName, sourceUrl: quote.sourceUrl, freshness: quote.freshness, warning: quote.warning });
+      await recordSyncRunAsset({ runKey, assetId: asset.id, ticker: asset.ticker, displayName: asset.displayName, status: "success", previousPrice: previous?.price, price: quote.price?.toString(), bid: quote.bid?.toString(), ask: quote.ask?.toString(), changePercent: quote.changePercent?.toString(), sourceName: quote.sourceName, sourceUrl: quote.sourceUrl, asOf: quote.asOf, message: quote.warning });
       const news = await fetchVietnamNews(asset);
       for (const item of news) await insertNewsItem({ assetId: asset.id, fingerprint: item.fingerprint, title: item.title, sourceName: item.sourceName, sourceUrl: item.sourceUrl, snippet: item.snippet, publishedAt: item.publishedAt, fetchedAt: Date.now() });
       const analysis = await createAnalysis(aiModel, asset, quote, news);
@@ -56,7 +58,9 @@ export async function syncMarket(runKey: string) {
       digestLines.push(`<section style="border:1px solid #e5ece7;padding:14px;margin:12px 0;border-radius:10px"><b>${escapeHtml(asset.ticker)} · ${escapeHtml(asset.displayName)}</b><p>Giá/NAV: ${quote.price ?? "—"} · Biến động: ${quote.changePercent ?? "—"}% · ${escapeHtml(quote.sourceName)}</p>${analysis ? `<p><b>${analysis.signal}</b> · Giá tham chiếu ${analysis.referencePrice} · Mục tiêu ${analysis.targetPrice}<br/>${escapeHtml(analysis.summary)}<br/><small>Rủi ro: ${escapeHtml(analysis.risk)}</small></p>` : "<p>Chưa đủ dữ liệu để phân tích AI.</p>"}</section>`);
       succeeded += 1;
     } catch (error) {
-      errors.push(`${asset.ticker}: ${error instanceof Error ? error.message : String(error)}`);
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push(`${asset.ticker}: ${message}`);
+      await recordSyncRunAsset({ runKey, assetId: asset.id, ticker: asset.ticker, displayName: asset.displayName, status: "failed", message: message.slice(0, 2000) }).catch(() => undefined);
     }
   }
   try { await sendDigest(runKey, digestLines); } catch (error) { errors.push(`email: ${error instanceof Error ? error.message : String(error)}`); }

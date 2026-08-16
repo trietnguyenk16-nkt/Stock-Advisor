@@ -116,6 +116,14 @@ describe("direct Vercel endpoint contracts", () => {
     expect(harness.read()).toMatchObject({ ticker: "VNM.VN", name: "Vinamilk", price: 70000, currency: "VND" });
   });
 
+  it("returns CafeF NAV for an open-ended fund rather than requiring a Yahoo symbol", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("<meta content='Giá NAV (ngày 16-08-2026): 93,969.17 VNĐ.'>", { status: 200, headers: { "content-type": "text/html" } })));
+    const harness = responseHarness();
+    await marketQuote({ url: "/api/market/quote?ticker=DCDS", headers: {} } as any, harness.res as any);
+    expect(harness.res.statusCode).toBe(200);
+    expect(harness.read()).toMatchObject({ ticker: "DCDS", price: 93969.17, currency: "VND", source: "CafeF NAV" });
+  });
+
   it("returns safe empty history and push config responses without optional secrets", async () => {
     const historyHarness = responseHarness();
     await marketHistory({} as any, historyHarness.res as any);
