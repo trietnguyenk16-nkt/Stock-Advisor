@@ -273,4 +273,4 @@
 
 - [x] Audit and document quote/news provider inputs used by AI; quote providers carry source/asOf and AI news now uses CafeF plus Yahoo Finance
 - [x] Implement source- and timestamp-aware market/news payload for AI analysis; each news item includes publisher, link, publishedAt, fetchedAt and sourceType
-- [ ] Add provider/payload/fallback tests, validate, push and checkpoint
+- [x] Add provider/payload/fallback tests, validate, push and checkpoint; commit `4906aec` pushed with 70 tests passing
