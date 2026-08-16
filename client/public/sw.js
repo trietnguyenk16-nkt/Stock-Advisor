@@ -1,4 +1,4 @@
-const CACHE_NAME = "lumen-shell-v1";
+const CACHE_NAME = "lumen-shell-v2";
 const SHELL = ["/", "/manifest.webmanifest", "/pwa-icon.svg", "/pwa-maskable.svg", "/offline.html"];
 
 self.addEventListener("install", (event) => {
