@@ -1,14 +1,13 @@
-import { json, readJson, errorResponse } from "../_lib/direct";
-import { withWebRequest } from "../_lib/vercel";
+import { sendJson, readJson, type ApiRequest, type ApiResponse } from "../_lib/node";
 
-export default withWebRequest(async (request) => {
-  const body = await readJson(request);
-  if (!body?.endpoint || !body?.keys?.p256dh || !body?.keys?.auth) return json({ error: "Invalid push subscription" }, 400);
+export default async function handler(req: ApiRequest, res: ApiResponse) {
+  const body = await readJson(req);
+  if (!body?.endpoint || !body?.keys?.p256dh || !body?.keys?.auth) return sendJson(res, { error: "Invalid push subscription" }, 400);
   try {
     const { upsertPushSubscription } = await import("../../server/db");
     await upsertPushSubscription({ endpoint: body.endpoint, p256dh: body.keys.p256dh, auth: body.keys.auth });
-    return json({ ok: true });
+    return sendJson(res, { ok: true });
   } catch (error) {
-    return errorResponse(error);
+    return sendJson(res, { error: error instanceof Error ? error.message : "Internal server error" }, 500);
   }
-})
+}

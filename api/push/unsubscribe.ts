@@ -1,14 +1,13 @@
-import { json, readJson, errorResponse } from "../_lib/direct";
-import { withWebRequest } from "../_lib/vercel";
+import { sendJson, readJson, type ApiRequest, type ApiResponse } from "../_lib/node";
 
-export default withWebRequest(async (request) => {
-  const body = await readJson(request);
-  if (!body?.endpoint) return json({ error: "Endpoint is required" }, 400);
+export default async function handler(req: ApiRequest, res: ApiResponse) {
+  const body = await readJson(req);
+  if (!body?.endpoint) return sendJson(res, { error: "Endpoint is required" }, 400);
   try {
     const { deletePushSubscription } = await import("../../server/db");
     await deletePushSubscription(body.endpoint);
-    return json({ ok: true });
+    return sendJson(res, { ok: true });
   } catch (error) {
-    return errorResponse(error);
+    return sendJson(res, { error: error instanceof Error ? error.message : "Internal server error" }, 500);
   }
-})
+}

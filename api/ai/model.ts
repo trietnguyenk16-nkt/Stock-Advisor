@@ -1,16 +1,15 @@
 import { AI_MODELS } from "../../server/openai";
-import { json, readJson, errorResponse } from "../_lib/direct";
-import { withWebRequest } from "../_lib/vercel";
+import { sendJson, readJson, type ApiRequest, type ApiResponse } from "../_lib/node";
 
-export default withWebRequest(async (request) => {
-  const body = await readJson(request);
+export default async function handler(req: ApiRequest, res: ApiResponse) {
+  const body = await readJson(req);
   const model = body?.model;
-  if (!AI_MODELS.includes(model)) return json({ error: "Model AI không được hỗ trợ" }, 400);
+  if (!AI_MODELS.includes(model)) return sendJson(res, { error: "Model AI không được hỗ trợ" }, 400);
   try {
     const { setAiModel } = await import("../../server/db");
     const saved = await setAiModel(model);
-    return json({ ok: Boolean(saved), model, persisted: Boolean(saved) });
+    return sendJson(res, { ok: Boolean(saved), model, persisted: Boolean(saved) });
   } catch (error) {
-    return errorResponse(error);
+    return sendJson(res, { error: error instanceof Error ? error.message : "Internal server error" }, 500);
   }
-})
+}
