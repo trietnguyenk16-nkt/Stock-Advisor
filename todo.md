@@ -265,4 +265,4 @@
 
 - [x] Fix AI eligibility so assets with valid current quotes are analyzed instead of shown as waiting for data; pass current Watchlist quotes to AI preflight
 - [x] Add a readable AI analysis results section with signal, prices, reasoning, risk, confidence and sources; added `AiResultsPanel` responsive component
-- [ ] Validate responsive AI results, tests, typecheck, build, commit, push and checkpoint
+- [x] Validate responsive AI results, tests, typecheck, build, commit, push and checkpoint; commit `f279401` pushed to GitHub main
