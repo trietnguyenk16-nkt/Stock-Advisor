@@ -217,3 +217,10 @@
 - [x] Add regression tests for null market values and AI analysis numeric fields
 - [x] Run 50+ tests, typecheck, production build and visual smoke check
 - [x] Push crash fix to GitHub và save a new checkpoint; user must redeploy Vercel
+
+- [x] Fix fund sync so DCDS, SSISCA, VCBF and other open-ended funds receive NAV data
+- [x] Verify CafeF/Fmarket/VCBF source behavior and add a robust fallback strategy for fund NAV
+- [x] Fix AI analysis to include every tracked asset with a valid current quote, not return zero analyzed
+- [x] Return readable AI text for each analyzed ticker with signal, price, reasoning, risk and confidence
+- [x] Add regression coverage for fund sync and AI analyzed-count/result rendering
+- [x] Validate, push the fixes to GitHub, and save a new checkpoint

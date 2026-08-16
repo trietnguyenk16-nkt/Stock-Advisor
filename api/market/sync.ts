@@ -12,10 +12,20 @@ async function fetchText(url: string) { const response = await fetch(url, { head
 
 async function fetchQuote(asset: Asset): Promise<Quote> {
   if (asset.asset_type === "fund") {
-    const url = `https://cafef.vn/du-lieu/chung-chi-quy/${encodeURIComponent(asset.provider_code || asset.ticker)}.chn`;
-    const html = await fetchText(url); const match = html.match(/Giá\s*NAV[^:]{0,120}:\s*([0-9][0-9.,]*)/i) ?? html.match(/NAV[^:]{0,120}:\s*([0-9][0-9.,]*)/i); const price = match ? parseNumber(match[1] ?? "") : undefined;
-    if (price === undefined) throw new Error(`Không đọc được NAV quỹ từ CafeF: ${asset.ticker}`);
-    return { price, change: null, sourceName: "CafeF fund data", sourceUrl: url, freshness: "eod" };
+    const rawCode = (asset.provider_code || asset.ticker).trim().toUpperCase();
+    const candidates = Array.from(new Set([rawCode, rawCode === "SSISCA" ? "SSI-SCA" : "", rawCode.replace(/[^A-Z0-9-]/g, "-")].filter(Boolean)));
+    const errors: string[] = [];
+    for (const code of candidates) {
+      const url = `https://cafef.vn/du-lieu/chung-chi-quy/${encodeURIComponent(code)}.chn`;
+      try {
+        const html = await fetchText(url);
+        const match = html.match(/Giá\s*NAV[^:]{0,120}:\s*([0-9][0-9.,]*)/i) ?? html.match(/NAV[^:]{0,120}:\s*([0-9][0-9.,]*)/i);
+        const price = match ? parseNumber(match[1] ?? "") : undefined;
+        if (price !== undefined && price > 0) return { price, change: null, sourceName: "CafeF fund data", sourceUrl: url, freshness: "eod" };
+        errors.push(`${code}: NAV không hợp lệ`);
+      } catch (error) { errors.push(`${code}: ${error instanceof Error ? error.message : String(error)}`); }
+    }
+    throw new Error(`Không đọc được NAV quỹ từ CafeF: ${asset.ticker} (${errors.join("; ")})`);
   }
   if (asset.asset_type === "gold") {
     const errors: string[] = [];

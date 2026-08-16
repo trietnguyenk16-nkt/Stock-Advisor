@@ -31,25 +31,25 @@ async function fetchNews(symbol: string) {
 }
 
 async function analyze(model: string, asset: Record<string, unknown>, quote: Record<string, unknown>, news: Array<Record<string, unknown>>): Promise<PortfolioAnalysisResult> {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { authorization: `Bearer ${process.env.OPENAI_API_KEY}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      model,
-      ...(model === "gpt-5-mini" ? { reasoning_effort: "low" } : {}),
-      messages: [
-        { role: "system", content: PORTFOLIO_AI_SYSTEM_PROMPT },
-        { role: "user", content: JSON.stringify({ asset, quote, news, instruction: "Phân tích mã này trong danh mục. Liên kết luận điểm với giá và từng tin có nguồn. Chọn BUY, SELL hoặc HOLD; nêu giá tham chiếu, giá mục tiêu, luận cứ, rủi ro và confidence." }) },
-      ],
-      response_format: { type: "json_schema", json_schema: { name: "manual_asset_analysis", strict: true, schema: { type: "object", properties: { signal: { type: "string", enum: ["BUY", "SELL", "HOLD"] }, summary: { type: "string" }, referencePrice: { type: "number" }, targetPrice: { type: "number" }, risk: { type: "string" }, confidence: { type: "number" } }, required: ["signal", "summary", "referencePrice", "targetPrice", "risk", "confidence"], additionalProperties: false } } },
-    }),
-  });
-  const text = await response.text();
-  if (!response.ok) throw new Error(`OpenAI ${response.status}: ${text.slice(0, 300)}`);
-  const payload = JSON.parse(text) as { choices?: Array<{ message?: { content?: string } }> };
-  const content = payload.choices?.[0]?.message?.content;
-  if (!content) throw new Error("OpenAI không trả nội dung phân tích");
-  return { ...(JSON.parse(content) as Omit<PortfolioAnalysisResult, "news">), news: news as PortfolioAnalysisResult["news"] };
+  const messages = [
+    { role: "system", content: PORTFOLIO_AI_SYSTEM_PROMPT },
+    { role: "user", content: JSON.stringify({ asset, quote, news, instruction: "Phân tích mã này trong danh mục. Liên kết luận điểm với giá và từng tin có nguồn. Chọn BUY, SELL hoặc HOLD; nêu giá tham chiếu, giá mục tiêu, luận cứ, rủi ro và confidence. Chỉ trả về JSON hợp lệ với các khóa signal, summary, referencePrice, targetPrice, risk, confidence." }) },
+  ];
+  const schema = { type: "json_schema", json_schema: { name: "manual_asset_analysis", strict: true, schema: { type: "object", properties: { signal: { type: "string", enum: ["BUY", "SELL", "HOLD"] }, summary: { type: "string" }, referencePrice: { type: "number" }, targetPrice: { type: "number" }, risk: { type: "string" }, confidence: { type: "number" } }, required: ["signal", "summary", "referencePrice", "targetPrice", "risk", "confidence"], additionalProperties: false } } };
+  let lastError = "OpenAI không trả nội dung phân tích";
+  for (const useSchema of [true, false]) {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", { method: "POST", headers: { authorization: `Bearer ${process.env.OPENAI_API_KEY}`, "content-type": "application/json" }, body: JSON.stringify({ model, ...(model === "gpt-5-mini" ? { reasoning_effort: "low" } : {}), messages, ...(useSchema ? { response_format: schema } : {}) }) });
+    const text = await response.text();
+    if (!response.ok) { lastError = `OpenAI ${response.status}: ${text.slice(0, 300)}`; continue; }
+    try {
+      const payload = JSON.parse(text) as { choices?: Array<{ message?: { content?: string } }> };
+      const content = payload.choices?.[0]?.message?.content?.trim();
+      if (!content) { lastError = "OpenAI không trả nội dung phân tích"; continue; }
+      const clean = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+      return { ...(JSON.parse(clean) as Omit<PortfolioAnalysisResult, "news">), news: news as PortfolioAnalysisResult["news"] };
+    } catch (error) { lastError = error instanceof Error ? error.message : "Không parse được JSON AI"; }
+  }
+  throw new Error(lastError);
 }
 
 export default async function handler(req: AnyRequest, res?: AnyResponse) {
@@ -73,9 +73,16 @@ export default async function handler(req: AnyRequest, res?: AnyResponse) {
       if (asset.price === null || asset.price === undefined) { errors.push(`${asset.ticker}: chưa có giá có timestamp`); continue; }
       try {
         const news = await fetchNews(String(asset.provider_code ?? asset.ticker));
-        const result = await analyze(model, asset, { price: Number(asset.price), changePercent: asset.change_percent === null ? null : Number(asset.change_percent), asOf: asset.as_of }, news);
+        const quote = { price: Number(asset.price), changePercent: asset.change_percent === null ? null : Number(asset.change_percent), asOf: asset.as_of };
+        let result: PortfolioAnalysisResult;
+        let modelUsed = model;
+        try { result = await analyze(model, asset, quote, news); } catch (primaryError) {
+          if (model !== "gpt-5-mini") throw primaryError;
+          modelUsed = "gpt-4o-mini";
+          result = await analyze(modelUsed, asset, quote, news);
+        }
         await pool.query(`INSERT INTO stock_advisor.asset_analyses (asset_id, run_key, signal, summary, reference_price, target_price, risk, confidence, as_of) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (run_key, asset_id) DO UPDATE SET signal=EXCLUDED.signal, summary=EXCLUDED.summary, reference_price=EXCLUDED.reference_price, target_price=EXCLUDED.target_price, risk=EXCLUDED.risk, confidence=EXCLUDED.confidence, as_of=EXCLUDED.as_of`, [asset.id, runKey, result.signal, result.summary, result.referencePrice, result.targetPrice, result.risk, result.confidence, Date.now()]);
-        results.push({ ticker: asset.ticker, name: asset.display_name, ...result });
+        results.push({ ticker: asset.ticker, name: asset.display_name, model: modelUsed, ...result });
       } catch (error) { errors.push(`${asset.ticker}: ${error instanceof Error ? error.message : String(error)}`); }
     }
     return send(res, { ok: results.length > 0, status: errors.length && !results.length ? "failed" : errors.length ? "partial" : "success", model, analyzed: results.length, skipped: assets.length - results.length, results, errors }, 200);

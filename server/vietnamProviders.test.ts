@@ -32,6 +32,17 @@ describe("Vietnam market providers", () => {
     expect(quote.freshness).toBe("eod");
   });
 
+  it("normalizes SSISCA to the CafeF SSI-SCA page when the raw page is placeholder data", async () => {
+    const fund = { ...asset, ticker: "SSISCA", displayName: "SSISCA", assetType: "fund" as const, providerCode: "SSISCA" };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, text: async () => '<meta name="description" content="Giá NAV (ngày 16-08-2026): 0.00 VNĐ">' })
+      .mockResolvedValueOnce({ ok: true, text: async () => '<meta name="description" content="Giá NAV (ngày 16-08-2026): 39,562.82 VNĐ">' });
+    vi.stubGlobal("fetch", fetchMock);
+    const quote = await fetchVietnamQuote(fund);
+    expect(quote.price).toBe(39562.82);
+    expect(fetchMock.mock.calls[1]?.[0]).toContain("SSI-SCA");
+  });
+
   it("uses the PNJ public API for the default SJC gold quote", async () => {
     const gold = { ...asset, ticker: "SJC", displayName: "Vàng SJC", assetType: "gold" as const, providerCode: "GC=F" };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
