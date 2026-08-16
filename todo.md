@@ -245,4 +245,4 @@
 - [x] Persist AI advice runs, user requirements and advice date in a dedicated Supabase table
 - [x] Fix new-asset and fund synchronization plus AI quote eligibility in the production contract
 - [x] Recheck notification/email readiness and replace dashboard tagline with meaningful product copy
-- [ ] Test, commit, push, tag completed GitHub issues DONE, and checkpoint every completed release
+- [x] Test, commit, push, tag completed GitHub issues DONE, and checkpoint every completed release
