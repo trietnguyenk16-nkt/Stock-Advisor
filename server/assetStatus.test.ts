@@ -5,6 +5,7 @@ describe("asset status label", () => {
   it("moves from waiting to updated after a successful quote refresh", () => {
     expect(getAssetStatusLabel({ isLoading: false, hasError: false, hasChange: false })).toBe("Chờ đồng bộ");
     expect(getAssetStatusLabel({ isLoading: false, hasError: false, hasChange: true })).toBe("Đã cập nhật");
+    expect(getAssetStatusLabel({ isLoading: false, hasError: false, hasChange: false, hasPrice: true })).toBe("Đã cập nhật");
   });
 
   it("prioritizes loading and provider errors", () => {

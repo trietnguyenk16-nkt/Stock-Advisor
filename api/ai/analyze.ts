@@ -70,6 +70,18 @@ async function fetchCurrentPrice(asset: Record<string, unknown>) {
   return { price, changePercent: Number.isFinite(previous) && previous !== 0 ? ((price - previous) / previous) * 100 : null, asOf: Date.now(), sourceName: "Yahoo Finance", sourceUrl };
 }
 
+function clientQuoteMap(value: unknown) {
+  if (!Array.isArray(value)) return new Map<string, Record<string, unknown>>();
+  return new Map(value.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object")).map((item) => [String(item.ticker ?? "").trim().toUpperCase(), item]));
+}
+
+function quoteFromClient(asset: Record<string, unknown>, clientQuotes: Map<string, Record<string, unknown>>) {
+  const provided = clientQuotes.get(String(asset.ticker ?? "").trim().toUpperCase());
+  const price = Number(provided?.price);
+  if (!provided || !Number.isFinite(price) || price <= 0) return null;
+  return { price, changePercent: Number.isFinite(Number(provided.change)) ? Number(provided.change) : null, asOf: provided.asOf ?? Date.now(), sourceName: String(provided.source ?? "Watchlist quote"), sourceUrl: provided.sourceUrl ? String(provided.sourceUrl) : undefined };
+}
+
 async function analyze(model: string, asset: Record<string, unknown>, quote: Record<string, unknown>, news: Array<Record<string, unknown>>, requirement: string): Promise<PortfolioAnalysisResult> {
   const system = requirement ? `${PORTFOLIO_AI_SYSTEM_PROMPT}\n\nYêu cầu đầu tư bổ sung của người dùng: ${requirement}` : PORTFOLIO_AI_SYSTEM_PROMPT;
   const messages = [
@@ -105,6 +117,7 @@ export default async function handler(req: AnyRequest, res?: AnyResponse) {
     const body = await readBody(req);
     const additionalRequirement = typeof body.requirement === "string" ? body.requirement.trim().slice(0, 1200) : "";
     const requestedTicker = /^[A-Z0-9][A-Z0-9.=/-]{0,31}$/i.test(additionalRequirement) ? additionalRequirement.toUpperCase() : null;
+    const clientQuotes = clientQuoteMap(body.quotes);
     const settings = await pool.query("SELECT model FROM stock_advisor.ai_settings WHERE workspace_key='owner' LIMIT 1").catch(() => ({ rows: [] }));
     const model = modelFrom(body.model ?? settings.rows[0]?.model);
     await pool.query(`CREATE SCHEMA IF NOT EXISTS stock_advisor; CREATE TABLE IF NOT EXISTS stock_advisor.ai_advice_runs (id BIGSERIAL PRIMARY KEY, run_key VARCHAR(96) NOT NULL UNIQUE, workspace_key VARCHAR(96) NOT NULL DEFAULT 'owner', requested_ticker VARCHAR(32), additional_requirement TEXT, model VARCHAR(64) NOT NULL, status VARCHAR(16) NOT NULL, assets_requested INTEGER NOT NULL DEFAULT 0, assets_analyzed INTEGER NOT NULL DEFAULT 0, assets_skipped INTEGER NOT NULL DEFAULT 0, error_message TEXT, response_json JSONB, started_at BIGINT NOT NULL, finished_at BIGINT, created_at TIMESTAMPTZ NOT NULL DEFAULT now());`);
@@ -121,8 +134,8 @@ export default async function handler(req: AnyRequest, res?: AnyResponse) {
     const errors: string[] = [];
     for (const asset of assets) {
       try {
-        let quote = { price: asset.price == null ? Number.NaN : Number(asset.price), changePercent: asset.change_percent == null ? null : Number(asset.change_percent), asOf: asset.as_of };
-        if (!Number.isFinite(quote.price)) {
+        let quote = quoteFromClient(asset, clientQuotes) ?? { price: asset.price == null ? Number.NaN : Number(asset.price), changePercent: asset.change_percent == null ? null : Number(asset.change_percent), asOf: asset.as_of };
+        if (!Number.isFinite(quote.price) || quote.price <= 0) {
           const current = await fetchCurrentPrice(asset);
           quote = { price: current.price, changePercent: current.changePercent, asOf: current.asOf };
           await pool.query(`INSERT INTO stock_advisor.price_snapshots (asset_id, run_key, price, change_percent, as_of, source_name, source_url, freshness) VALUES ($1,$2,$3,$4,$5,$6,$7,'ai-preflight') ON CONFLICT (run_key, asset_id) DO NOTHING`, [asset.id, `ai-preflight:${runKey}`, current.price, current.changePercent, current.asOf, current.sourceName, current.sourceUrl]).catch(() => undefined);

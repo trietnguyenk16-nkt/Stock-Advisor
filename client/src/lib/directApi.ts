@@ -29,7 +29,7 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 export const directApi = {
   aiConfig: () => requestJson<AiConfig>("/api/ai/config"),
   saveAiModel: (model: AiConfig["model"]) => requestJson<{ ok: boolean; model: AiConfig["model"]; persisted: boolean }>("/api/ai/model", { method: "POST", body: JSON.stringify({ model }) }),
-  analyzeAi: (model?: AiConfig["model"], requirement?: string) => requestJson<AiAnalysisResponse>("/api/ai/analyze", { method: "POST", body: JSON.stringify({ ...(model ? { model } : {}), ...(requirement?.trim() ? { requirement: requirement.trim() } : {}) }) }),
+  analyzeAi: (model?: AiConfig["model"], requirement?: string, quotes?: Quote[]) => requestJson<AiAnalysisResponse>("/api/ai/analyze", { method: "POST", body: JSON.stringify({ ...(model ? { model } : {}), ...(requirement?.trim() ? { requirement: requirement.trim() } : {}), ...(quotes?.length ? { quotes } : {}) }) }),
   quote: (ticker: string) => requestJson<Quote>(`/api/market/quote?ticker=${encodeURIComponent(ticker)}`),
   sync: () => requestJson<{ status?: string; message?: string }>("/api/market/sync", { method: "POST" }),
   history: (date?: string) => requestJson<MarketHistory>(`/api/market/history${date ? `?date=${encodeURIComponent(date)}` : ""}`),

@@ -262,3 +262,7 @@
 - [x] Audit all GitHub issues without DONE status and classify code-vs-external dependencies; #16/#17 retain external verification dependencies, #18–#21 are code-complete
 - [x] Implement all not-DONE issue requirements that are actionable in the repository and add tests; added `server/notDoneIssueContracts.test.ts` for #16–#21
 - [x] Validate, push code, update issue labels and save a checkpoint for the not-DONE issue batch; commit `be07653` pushed, #18–#21 DONE, #16–#17 blocked-external
+
+- [x] Fix AI eligibility so assets with valid current quotes are analyzed instead of shown as waiting for data; pass current Watchlist quotes to AI preflight
+- [x] Add a readable AI analysis results section with signal, prices, reasoning, risk, confidence and sources; added `AiResultsPanel` responsive component
+- [ ] Validate responsive AI results, tests, typecheck, build, commit, push and checkpoint
