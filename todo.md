@@ -190,3 +190,6 @@
 - [x] Thêm nút `Bắt đầu phân tích AI` với trạng thái loading, thành công, lỗi và thiếu dữ liệu
 - [x] Mở rộng catalog quỹ Việt Nam gồm DCDS, VCBF-BCF và các mã quỹ tham khảo từ Fmarket
 - [x] Hiển thị nguồn tham khảo/quy tắc dữ liệu quỹ và thêm test cho nút AI, tìm kiếm quỹ, chống trùng
+
+- [ ] Push toàn bộ thay đổi mới nhất lên `trietnguyenk16-nkt/Stock-Advisor:main`
+- [ ] Xác minh commit remote và gửi hash cho người dùng
