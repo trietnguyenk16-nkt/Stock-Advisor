@@ -266,3 +266,7 @@
 - [x] Fix AI eligibility so assets with valid current quotes are analyzed instead of shown as waiting for data; pass current Watchlist quotes to AI preflight
 - [x] Add a readable AI analysis results section with signal, prices, reasoning, risk, confidence and sources; added `AiResultsPanel` responsive component
 - [x] Validate responsive AI results, tests, typecheck, build, commit, push and checkpoint; commit `f279401` pushed to GitHub main
+
+- [x] Reproduce the reported 0-analyzed-assets flow with four valid Watchlist quotes; regression covers VNM.VN, FPT.VN, DCDS and SJC
+- [x] Fix the actual server/client response or quote eligibility cause and add regression coverage; refetch quotes, parse Vercel string bodies and fallback from current quotes
+- [ ] Re-run full validation, push the verified fix and save a checkpoint

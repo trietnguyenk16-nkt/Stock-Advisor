@@ -115,7 +115,11 @@ export default function Home() {
     setIsAnalyzingAi(true);
     setLastAiResult(null);
     try {
-      const currentQuotes = assets.filter((asset) => typeof asset.price === "number" && Number.isFinite(asset.price) && asset.price > 0).map((asset) => ({ ticker: asset.ticker, name: asset.name, currency: asset.currency, price: asset.price, bid: asset.bid, ask: asset.ask, change: asset.change, changeBasis: asset.changeBasis, asOf: new Date().toISOString(), source: asset.source ?? "Watchlist quote", sourceUrl: asset.sourceUrl }));
+      const quoteResults = await Promise.allSettled(assets.map((asset) => directApi.quote(asset.ticker)));
+      const refreshedQuotes = quoteResults.flatMap((item, index) => item.status === "fulfilled" ? [{ ...item.value, assetType: assets[index].kind === "Vàng" ? "gold" : assets[index].kind === "Chứng chỉ quỹ" ? "fund" : "equity", providerCode: assets[index].providerCode ?? assets[index].ticker }] : []);
+      const fallbackQuotes = assets.filter((asset) => typeof asset.price === "number" && Number.isFinite(asset.price) && asset.price > 0).map((asset) => ({ ticker: asset.ticker, name: asset.name, currency: asset.currency, price: asset.price, bid: asset.bid, ask: asset.ask, change: asset.change, changeBasis: asset.changeBasis, asOf: new Date().toISOString(), source: asset.source ?? "Watchlist quote", sourceUrl: asset.sourceUrl, assetType: asset.kind === "Vàng" ? "gold" : asset.kind === "Chứng chỉ quỹ" ? "fund" : "equity", providerCode: asset.providerCode ?? asset.ticker }));
+      const currentQuotes = [...refreshedQuotes, ...fallbackQuotes.filter((fallback) => !refreshedQuotes.some((quote) => quote.ticker === fallback.ticker))];
+      setAssets((current) => current.map((asset) => { const quote = refreshedQuotes.find((item) => item.ticker === asset.ticker); return quote ? { ...asset, name: quote.name, currency: quote.currency || asset.currency, price: quote.price, bid: quote.bid, ask: quote.ask, change: quote.change, source: quote.source, sourceUrl: quote.sourceUrl, changeBasis: quote.changeBasis } : asset; }));
       const result = await directApi.analyzeAi(selectedAiModel, aiRequirement, currentQuotes);
       if (!result.ok && result.analyzed === 0) throw new Error(result.errors?.[0] ?? "Không tạo được phân tích");
       const normalized = normalizeAiAnalysisResponse(result, selectedAiModel, assets.length);

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import handler, { PORTFOLIO_AI_SYSTEM_PROMPT } from "../api/ai/analyze";
+import handler, { buildAssetsFromQuotes, PORTFOLIO_AI_SYSTEM_PROMPT, readBody } from "../api/ai/analyze";
 
 describe("portfolio AI analysis contract", () => {
   it("defines a cautious prompt with signals, prices, reasoning and risk rules", () => {
@@ -10,6 +10,28 @@ describe("portfolio AI analysis contract", () => {
     expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("không dùng nguồn không có trong payload");
     expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("HOLD");
     expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("không phải tư vấn đầu tư");
+  });
+});
+
+describe("AI quote eligibility regression", () => {
+  it("builds all four analyzable assets from valid Watchlist quotes", () => {
+    const assets = buildAssetsFromQuotes([
+      { ticker: "VNM.VN", name: "Vinamilk", price: 65000, source: "Yahoo Finance" },
+      { ticker: "FPT.VN", name: "FPT", price: 120000, source: "Yahoo Finance" },
+      { ticker: "DCDS", name: "DCDS", price: 15000, source: "CafeF" },
+      { ticker: "SJC", name: "SJC", price: 88000000, source: "PNJ SJC API" },
+    ]);
+    expect(assets).toHaveLength(4);
+    expect(assets.map((asset) => asset.ticker)).toEqual(["VNM.VN", "FPT.VN", "DCDS", "SJC"]);
+  });
+
+  it("reads JSON request bodies when Vercel supplies the body as a string", async () => {
+    const body = await readBody({ body: JSON.stringify({ quotes: [{ ticker: "VNM.VN", price: 65000 }] }) } as never);
+    expect(body).toEqual({ quotes: [{ ticker: "VNM.VN", price: 65000 }] });
+  });
+
+  it("does not treat zero or missing prices as analyzable", () => {
+    expect(buildAssetsFromQuotes([{ ticker: "VNM.VN", price: 0 }, { ticker: "FPT.VN" }, { ticker: "VCB.VN", price: 100000 }])).toHaveLength(1);
   });
 });
 

@@ -13,8 +13,11 @@ function send(res: AnyResponse | undefined, body: unknown, status = 200) {
   return body;
 }
 
-async function readBody(req: AnyRequest) {
-  return req.body && typeof req.body === "object" ? req.body as Record<string, unknown> : {};
+export async function readBody(req: AnyRequest) {
+  if (req.body && typeof req.body === "object" && !Buffer.isBuffer(req.body)) return req.body as Record<string, unknown>;
+  const raw = typeof req.body === "string" ? req.body : Buffer.isBuffer(req.body) ? req.body.toString("utf8") : "";
+  if (!raw.trim()) return {};
+  try { return JSON.parse(raw) as Record<string, unknown>; } catch { return {}; }
 }
 
 function modelFrom(value: unknown) { return value === "gpt-5-mini" ? "gpt-5-mini" : "gpt-4o-mini"; }
@@ -82,6 +85,10 @@ function quoteFromClient(asset: Record<string, unknown>, clientQuotes: Map<strin
   return { price, changePercent: Number.isFinite(Number(provided.change)) ? Number(provided.change) : null, asOf: provided.asOf ?? Date.now(), sourceName: String(provided.source ?? "Watchlist quote"), sourceUrl: provided.sourceUrl ? String(provided.sourceUrl) : undefined };
 }
 
+export function buildAssetsFromQuotes(value: unknown) {
+  return Array.from(clientQuoteMap(value).entries()).filter(([, quote]) => Number.isFinite(Number(quote.price)) && Number(quote.price) > 0).map(([ticker, quote]) => ({ id: null, ticker, display_name: String(quote.name ?? ticker), asset_type: String(quote.assetType ?? "equity"), provider_code: String(quote.providerCode ?? ticker), currency: String(quote.currency ?? "VND"), price: null, change_percent: null, as_of: null }));
+}
+
 async function analyze(model: string, asset: Record<string, unknown>, quote: Record<string, unknown>, news: Array<Record<string, unknown>>, requirement: string): Promise<PortfolioAnalysisResult> {
   const system = requirement ? `${PORTFOLIO_AI_SYSTEM_PROMPT}\n\nYêu cầu đầu tư bổ sung của người dùng: ${requirement}` : PORTFOLIO_AI_SYSTEM_PROMPT;
   const messages = [
@@ -120,8 +127,14 @@ export default async function handler(req: AnyRequest, res?: AnyResponse) {
     const clientQuotes = clientQuoteMap(body.quotes);
     const settings = await pool.query("SELECT model FROM stock_advisor.ai_settings WHERE workspace_key='owner' LIMIT 1").catch(() => ({ rows: [] }));
     const model = modelFrom(body.model ?? settings.rows[0]?.model);
-    await pool.query(`CREATE SCHEMA IF NOT EXISTS stock_advisor; CREATE TABLE IF NOT EXISTS stock_advisor.ai_advice_runs (id BIGSERIAL PRIMARY KEY, run_key VARCHAR(96) NOT NULL UNIQUE, workspace_key VARCHAR(96) NOT NULL DEFAULT 'owner', requested_ticker VARCHAR(32), additional_requirement TEXT, model VARCHAR(64) NOT NULL, status VARCHAR(16) NOT NULL, assets_requested INTEGER NOT NULL DEFAULT 0, assets_analyzed INTEGER NOT NULL DEFAULT 0, assets_skipped INTEGER NOT NULL DEFAULT 0, error_message TEXT, response_json JSONB, started_at BIGINT NOT NULL, finished_at BIGINT, created_at TIMESTAMPTZ NOT NULL DEFAULT now());`);
-    const allAssets = (await pool.query(`SELECT ta.id, ta.ticker, ta.display_name, ta.asset_type, ta.provider_code, ta.currency, ps.price, ps.change_percent, ps.as_of FROM stock_advisor.tracked_assets ta LEFT JOIN LATERAL (SELECT price, change_percent, as_of FROM stock_advisor.price_snapshots WHERE asset_id=ta.id ORDER BY as_of DESC LIMIT 1) ps ON true WHERE ta.workspace_key='owner' AND ta.is_active=true ORDER BY ta.id`)).rows;
+    await pool.query(`CREATE SCHEMA IF NOT EXISTS stock_advisor; CREATE TABLE IF NOT EXISTS stock_advisor.ai_advice_runs (id BIGSERIAL PRIMARY KEY, run_key VARCHAR(96) NOT NULL UNIQUE, workspace_key VARCHAR(96) NOT NULL DEFAULT 'owner', requested_ticker VARCHAR(32), additional_requirement TEXT, model VARCHAR(64) NOT NULL, status VARCHAR(16) NOT NULL, assets_requested INTEGER NOT NULL DEFAULT 0, assets_analyzed INTEGER NOT NULL DEFAULT 0, assets_skipped INTEGER NOT NULL DEFAULT 0, error_message TEXT, response_json JSONB, started_at BIGINT NOT NULL, finished_at BIGINT, created_at TIMESTAMPTZ NOT NULL DEFAULT now());`).catch(() => undefined);
+    let allAssets: any[] = [];
+    try {
+      allAssets = (await pool.query(`SELECT ta.id, ta.ticker, ta.display_name, ta.asset_type, ta.provider_code, ta.currency, ps.price, ps.change_percent, ps.as_of FROM stock_advisor.tracked_assets ta LEFT JOIN LATERAL (SELECT price, change_percent, as_of FROM stock_advisor.price_snapshots WHERE asset_id=ta.id ORDER BY as_of DESC LIMIT 1) ps ON true WHERE ta.workspace_key='owner' AND ta.is_active=true ORDER BY ta.id`)).rows;
+    } catch (error) {
+      if (!clientQuotes.size) throw error;
+    }
+    if (!allAssets.length && clientQuotes.size) allAssets = buildAssetsFromQuotes(body.quotes);
     const runKey = `manual-ai:${Date.now()}`;
     const startedAt = Date.now();
     const assets = requestedTicker ? allAssets.filter((asset) => String(asset.ticker).toUpperCase() === requestedTicker) : allAssets;
@@ -148,7 +161,7 @@ export default async function handler(req: AnyRequest, res?: AnyResponse) {
           modelUsed = "gpt-4o-mini";
           result = await analyze(modelUsed, asset, quote, news, requestedTicker ? "" : additionalRequirement);
         }
-        await pool.query(`INSERT INTO stock_advisor.asset_analyses (asset_id, run_key, signal, summary, reference_price, target_price, risk, confidence, as_of) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (run_key, asset_id) DO UPDATE SET signal=EXCLUDED.signal, summary=EXCLUDED.summary, reference_price=EXCLUDED.reference_price, target_price=EXCLUDED.target_price, risk=EXCLUDED.risk, confidence=EXCLUDED.confidence, as_of=EXCLUDED.as_of`, [asset.id, runKey, result.signal, result.summary, result.referencePrice, result.targetPrice, result.risk, result.confidence, Date.now()]);
+        if (asset.id != null) await pool.query(`INSERT INTO stock_advisor.asset_analyses (asset_id, run_key, signal, summary, reference_price, target_price, risk, confidence, as_of) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (run_key, asset_id) DO UPDATE SET signal=EXCLUDED.signal, summary=EXCLUDED.summary, reference_price=EXCLUDED.reference_price, target_price=EXCLUDED.target_price, risk=EXCLUDED.risk, confidence=EXCLUDED.confidence, as_of=EXCLUDED.as_of`).catch(() => undefined);
         results.push({ ticker: asset.ticker, name: asset.display_name, model: modelUsed, ...result });
       } catch (error) { errors.push(`${asset.ticker}: ${error instanceof Error ? error.message : String(error)}`); }
     }
