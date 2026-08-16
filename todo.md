@@ -283,4 +283,4 @@
 - [x] Add regression coverage for requirement propagation and validation, then validate, push and checkpoint; commit `507e8cb` pushed with 71 tests passing
 
 - [x] Clear the previous AI result state immediately when a new analysis run starts while preserving database history; `setAiAnalyses([])` runs before quote refetch/API call
-- [x] Add regression coverage for new-run result isolation, validate, push and checkpoint; `server/aiResultReset.test.ts`, commit pending push
+- [x] Add regression coverage for new-run result isolation, validate, push and checkpoint; `server/aiResultReset.test.ts`, commit `b173870` pushed
