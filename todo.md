@@ -270,3 +270,7 @@
 - [x] Reproduce the reported 0-analyzed-assets flow with four valid Watchlist quotes; regression covers VNM.VN, FPT.VN, DCDS and SJC
 - [x] Fix the actual server/client response or quote eligibility cause and add regression coverage; refetch quotes, parse Vercel string bodies and fallback from current quotes
 - [x] Re-run full validation, push the verified fix and save a checkpoint; commit `4af5a98` pushed with 69 tests passing
+
+- [x] Audit and document quote/news provider inputs used by AI; quote providers carry source/asOf and AI news now uses CafeF plus Yahoo Finance
+- [x] Implement source- and timestamp-aware market/news payload for AI analysis; each news item includes publisher, link, publishedAt, fetchedAt and sourceType
+- [ ] Add provider/payload/fallback tests, validate, push and checkpoint

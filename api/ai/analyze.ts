@@ -22,13 +22,31 @@ export async function readBody(req: AnyRequest) {
 
 function modelFrom(value: unknown) { return value === "gpt-5-mini" ? "gpt-5-mini" : "gpt-4o-mini"; }
 
-async function fetchNews(symbol: string) {
+type AiNewsItem = { title: string; publisher: string; link: string; publishedAt: string | null; fetchedAt: string; sourceType: "VietnamNews" | "YahooFinance" };
+
+async function fetchYahooNews(query: string): Promise<AiNewsItem[]> {
   try {
-    const response = await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(symbol)}&newsCount=5&quotesCount=0`, { headers: { accept: "application/json" } });
+    const response = await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&newsCount=8&quotesCount=0`, { headers: { accept: "application/json" } });
     if (!response.ok) return [];
     const payload = await response.json() as { news?: Array<{ title?: string; publisher?: string; link?: string; providerPublishTime?: number }> };
-    return (payload.news ?? []).map((item) => ({ title: item.title ?? "", publisher: item.publisher ?? "Yahoo Finance", link: item.link ?? "", publishedAt: item.providerPublishTime ? new Date(item.providerPublishTime * 1000).toISOString() : null })).filter((item) => item.title && TRUSTED_NEWS_PUBLISHERS.has(item.publisher)).slice(0, 5);
+    return (payload.news ?? []).map((item) => ({ title: item.title ?? "", publisher: item.publisher ?? "Yahoo Finance", link: item.link ?? "", publishedAt: item.providerPublishTime ? new Date(item.providerPublishTime * 1000).toISOString() : null, fetchedAt: new Date().toISOString(), sourceType: "YahooFinance" as const })).filter((item) => item.title && item.link && TRUSTED_NEWS_PUBLISHERS.has(item.publisher));
   } catch { return []; }
+}
+
+async function fetchVietnamNews(query: string): Promise<AiNewsItem[]> {
+  try {
+    const response = await fetch(`https://cafef.vn/tim-kiem.chn?keywords=${encodeURIComponent(query)}`, { headers: { accept: "text/html", "user-agent": "StockAdvisor/1.0" } });
+    if (!response.ok) return [];
+    const html = await response.text();
+    const fetchedAt = new Date().toISOString();
+    return Array.from(html.matchAll(/href=["']([^"']+)["'][^>]*>([^<]{20,220})</gi)).slice(0, 8).map((match) => ({ title: (match[2] ?? "").replace(/\s+/g, " ").trim(), publisher: "CafeF", link: new URL(match[1] ?? "", "https://cafef.vn").toString(), publishedAt: null, fetchedAt, sourceType: "VietnamNews" as const })).filter((item) => item.title && item.link);
+  } catch { return []; }
+}
+
+export async function fetchNews(query: string) {
+  const [vietnamNews, yahooNews] = await Promise.all([fetchVietnamNews(query), fetchYahooNews(query)]);
+  const seen = new Set<string>();
+  return [...vietnamNews, ...yahooNews].filter((item) => { const key = item.link || item.title; if (seen.has(key)) return false; seen.add(key); return true; }).slice(0, 8);
 }
 
 async function fetchCurrentPrice(asset: Record<string, unknown>) {
@@ -153,7 +171,7 @@ export default async function handler(req: AnyRequest, res?: AnyResponse) {
           quote = { price: current.price, changePercent: current.changePercent, asOf: current.asOf };
           await pool.query(`INSERT INTO stock_advisor.price_snapshots (asset_id, run_key, price, change_percent, as_of, source_name, source_url, freshness) VALUES ($1,$2,$3,$4,$5,$6,$7,'ai-preflight') ON CONFLICT (run_key, asset_id) DO NOTHING`, [asset.id, `ai-preflight:${runKey}`, current.price, current.changePercent, current.asOf, current.sourceName, current.sourceUrl]).catch(() => undefined);
         }
-        const news = await fetchNews(String(asset.provider_code ?? asset.ticker));
+        const news = await fetchNews(`${String(asset.ticker ?? "")} ${String(asset.display_name ?? "")}`.trim());
         let result: PortfolioAnalysisResult;
         let modelUsed = model;
         try { result = await analyze(model, asset, quote, news, requestedTicker ? "" : additionalRequirement); } catch (primaryError) {

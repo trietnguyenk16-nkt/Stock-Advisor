@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import handler, { buildAssetsFromQuotes, PORTFOLIO_AI_SYSTEM_PROMPT, readBody } from "../api/ai/analyze";
+import handler, { buildAssetsFromQuotes, fetchNews, PORTFOLIO_AI_SYSTEM_PROMPT, readBody } from "../api/ai/analyze";
 
 describe("portfolio AI analysis contract", () => {
   it("defines a cautious prompt with signals, prices, reasoning and risk rules", () => {
@@ -23,6 +23,23 @@ describe("AI quote eligibility regression", () => {
     ]);
     expect(assets).toHaveLength(4);
     expect(assets.map((asset) => asset.ticker)).toEqual(["VNM.VN", "FPT.VN", "DCDS", "SJC"]);
+  });
+
+  it("combines CafeF and Yahoo Finance news with source metadata", async () => {
+    const originalFetch = globalThis.fetch;
+    const calls: string[] = [];
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input); calls.push(url);
+      if (url.includes("cafef.vn")) return new Response('<a href="/tin/vnm-news">Vinamilk công bố kết quả kinh doanh quý mới nhất</a>', { status: 200 });
+      return new Response(JSON.stringify({ news: [{ title: "VNM market update", publisher: "Reuters", link: "https://reuters.com/vnm", providerPublishTime: 1700000000 }] }), { status: 200 });
+    }) as typeof fetch;
+    try {
+      const news = await fetchNews("VNM.VN Vinamilk");
+      expect(calls.some((url) => url.includes("cafef.vn"))).toBe(true);
+      expect(calls.some((url) => url.includes("yahoo.com"))).toBe(true);
+      expect(news).toEqual(expect.arrayContaining([expect.objectContaining({ publisher: "CafeF", sourceType: "VietnamNews" }), expect.objectContaining({ publisher: "Reuters", sourceType: "YahooFinance" })]));
+      expect(news.every((item) => item.link && item.fetchedAt)).toBe(true);
+    } finally { globalThis.fetch = originalFetch; }
   });
 
   it("reads JSON request bodies when Vercel supplies the body as a string", async () => {
