@@ -254,3 +254,7 @@
 - [x] Implement priority issue #26: selected-date historical comparison
 - [x] Validate, commit/push priority issues, tag #22-#26 DONE, and checkpoint
 - [x] Fix preview runtime crash: remove incorrect React package aliases from Vite; verify dashboard renders and 57 tests/typecheck/build pass
+
+- [x] Identify newly added GitHub issues #22–#36 and record acceptance criteria; audit found their requested code paths already present in the latest release
+- [x] Implement newly added GitHub issues and add regression tests; latest code paths for #22–#36 were audited and covered by `server/newIssuesAudit.test.ts`
+- [ ] Run validation, commit, push GitHub, update issue labels, and save checkpoint
