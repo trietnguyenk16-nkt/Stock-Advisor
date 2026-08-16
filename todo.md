@@ -173,3 +173,12 @@
 - [x] Kiểm tra tài sản mới có được lưu vào `tracked_assets` và được direct manual sync đọc lại hay không
 - [x] Sửa frontend refresh để cập nhật quote/status của tài sản sau sync thành công
 - [x] Thêm contract test cho asset persistence và test helper xác nhận badge chuyển từ `Chờ đồng bộ` sang `Đã cập nhật`; live Supabase/Vercel cần redeploy để xác minh
+
+- [x] Đối chiếu domain Vercel đang chạy với checkpoint `8b745ded` và endpoint `/api/market/assets`: domain hiện trả 404, chưa phục vụ checkpoint mới
+- [x] Xác định 503 `/api/ai/model` là deployment cũ/khác project: domain hiện tại không có `/api/market/assets`, nên chưa thể đánh giá code checkpoint mới
+- [ ] Nếu code đúng, ghi rõ thao tác cấu hình/redeploy và dừng; không tạo thêm commit mù
+
+- [x] Thiết kế asset picker theo loại: Vàng SJC mặc định, cổ phiếu VN-Index và chứng chỉ quỹ có tìm kiếm
+- [x] Chống thêm tài sản trùng và hiển thị thông báo rõ ràng khi đã có trong danh mục
+- [x] Cải thiện AI analysis panel để luôn dễ thấy, có trạng thái chưa có dữ liệu và trạng thái phân tích
+- [x] Kiểm thử UI desktop/mobile, thêm test status helper, 39 tests/typecheck/build pass và chuẩn bị checkpoint phát hành

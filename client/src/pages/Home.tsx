@@ -31,13 +31,12 @@ import PushNotificationCard from "@/components/PushNotificationCard";
 import { toast } from "sonner";
 
 
-type AssetKind = "Cổ phiếu" | "Chứng chỉ quỹ" | "Vàng";
-type Asset = { ticker: string; name: string; kind: AssetKind; currency: string; price?: number; change?: number };
+import { filterAssetCatalog, isAssetSelected, type Asset, type AssetKind, type CatalogAsset } from "@/lib/assetCatalog";
 
 const defaultAssets: Asset[] = [
-  { ticker: "VNM.VN", name: "Vinamilk", kind: "Cổ phiếu", currency: "VND" },
-  { ticker: "E1VFVN30.VN", name: "DCVFM VN30 ETF", kind: "Chứng chỉ quỹ", currency: "VND" },
-  { ticker: "GC=F", name: "Gold Futures", kind: "Vàng", currency: "USD" },
+  { ticker: "VNM.VN", name: "Vinamilk", kind: "Cổ phiếu", currency: "VND", providerCode: "VNM.VN" },
+  { ticker: "E1VFVN30.VN", name: "DCVFM VN30 ETF", kind: "Chứng chỉ quỹ", currency: "VND", providerCode: "E1VFVN30.VN" },
+  { ticker: "SJC", name: "Vàng miếng SJC", kind: "Vàng", currency: "VND", providerCode: "GC=F" },
 ];
 
 const newsPlaceholders = [
@@ -66,6 +65,7 @@ export default function Home() {
   });
   const [ticker, setTicker] = useState("");
   const [kind, setKind] = useState<AssetKind>("Cổ phiếu");
+  const [catalogSearch, setCatalogSearch] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState("Chưa có lần đồng bộ");
@@ -108,19 +108,27 @@ export default function Home() {
   useEffect(() => {
     if (assetsPersisted.current) return;
     assetsPersisted.current = true;
-    void Promise.all(assets.map((asset) => directApi.addAsset({ ticker: asset.ticker, displayName: asset.name, assetType: asset.kind === "Vàng" ? "gold" : asset.kind === "Chứng chỉ quỹ" ? "fund" : "equity", providerCode: asset.ticker }))).catch(() => undefined);
+    void Promise.all(assets.map((asset) => directApi.addAsset({ ticker: asset.ticker, displayName: asset.name, assetType: asset.kind === "Vàng" ? "gold" : asset.kind === "Chứng chỉ quỹ" ? "fund" : "equity", providerCode: asset.providerCode ?? asset.ticker }))).catch(() => undefined);
   }, [assets]);
 
   const syncedAssets = useMemo(() => assets.filter((asset) => asset.price !== undefined), [assets]);
+  const filteredCatalog = useMemo(() => filterAssetCatalog(kind, catalogSearch).slice(0, 12), [kind, catalogSearch]);
 
-  const addAsset = async () => {
-    const normalized = ticker.trim().toUpperCase();
-    if (!normalized || assets.some((asset) => asset.ticker === normalized)) return;
-    const nextAsset = { ticker: normalized, name: normalized, kind, currency: kind === "Vàng" ? "USD" : "VND" };
+  const addAsset = async (catalogAsset?: CatalogAsset) => {
+    const normalized = (catalogAsset?.ticker ?? ticker).trim().toUpperCase();
+    const existing = isAssetSelected(normalized, assets.map((asset) => asset.ticker));
+    if (!normalized) return;
+    if (existing) {
+      toast.info("Tài sản đã được thêm", { description: `${normalized} đang có trong danh mục của bạn.` });
+      return;
+    }
+    const selected = catalogAsset ?? { ticker: normalized, name: normalized, kind, currency: "VND", providerCode: normalized, description: "Tài sản tùy chỉnh" };
+    const nextAsset = { ticker: selected.ticker, name: selected.name, kind: selected.kind, currency: selected.currency, providerCode: selected.providerCode };
     try {
-      await directApi.addAsset({ ticker: normalized, displayName: normalized, assetType: kind === "Vàng" ? "gold" : kind === "Chứng chỉ quỹ" ? "fund" : "equity", providerCode: normalized });
+      await directApi.addAsset({ ticker: selected.ticker, displayName: selected.name, assetType: selected.kind === "Vàng" ? "gold" : selected.kind === "Chứng chỉ quỹ" ? "fund" : "equity", providerCode: selected.providerCode });
       setAssets((current) => [...current, nextAsset]);
       setTicker("");
+      setCatalogSearch("");
       setIsAdding(false);
       toast.success("Đã lưu tài sản", { description: "Tài sản sẽ được đưa vào lần đồng bộ kế tiếp." });
     } catch (error) {
@@ -196,7 +204,7 @@ export default function Home() {
               <div><p className="eyebrow">WATCHLIST</p><CardTitle className="mt-1 text-lg tracking-[-0.03em]">Danh mục quan tâm</CardTitle></div>
               <Button onClick={() => setIsAdding((value) => !value)} variant="outline" className="min-h-11 rounded-full border-[#d8e2db] bg-white text-[#265d47] hover:bg-[#eff7f1]"><Plus size={16} className="mr-1.5" />Thêm mã</Button>
             </CardHeader>
-            {isAdding && <div className="border-b border-[#e9eeea] bg-[#fbfcfa] px-5 py-4 sm:px-6"><div className="flex flex-col gap-2 sm:flex-row"><Input value={ticker} onChange={(event) => setTicker(event.target.value)} onKeyDown={(event) => event.key === "Enter" && addAsset()} placeholder="Nhập ticker, ví dụ VNM.VN" className="h-10 rounded-xl border-[#dce5df] bg-white" autoFocus /><select aria-label="Loại tài sản" value={kind} onChange={(event) => setKind(event.target.value as AssetKind)} className="h-11 rounded-xl border border-[#dce5df] bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-[#b9d8c5]"><option>Cổ phiếu</option><option>Chứng chỉ quỹ</option><option>Vàng</option></select><Button onClick={addAsset} className="h-11 rounded-xl bg-[#173c2b] hover:bg-[#24543e]">Lưu mã</Button><Button onClick={() => setIsAdding(false)} variant="ghost" className="h-11 min-w-11 rounded-xl"><X size={16} /></Button></div><p className="mt-2 text-[11px] text-[#8b9891]">Ticker cần khớp với nguồn dữ liệu thị trường tương ứng. Hệ thống sẽ chỉ hiển thị giá sau khi đồng bộ thành công.</p></div>}
+            {isAdding && <div className="border-b border-[#e9eeea] bg-[#fbfcfa] px-5 py-5 sm:px-6"><div className="mb-4 flex items-center justify-between"><div><p className="text-sm font-semibold text-[#244b37]">Chọn tài sản theo danh mục</p><p className="mt-1 text-[11px] text-[#8b9891]">Tìm theo mã hoặc tên. Vàng sẽ mặc định là SJC.</p></div><Button onClick={() => setIsAdding(false)} variant="ghost" className="h-9 min-w-9 rounded-xl"><X size={16} /></Button></div><div className="grid grid-cols-3 gap-2 rounded-2xl bg-[#edf5ef] p-1"><button onClick={() => { setKind("Cổ phiếu"); setCatalogSearch(""); }} className={kind === "Cổ phiếu" ? "bg-white text-[#245a42] shadow-sm" : "text-[#779080]"}>Cổ phiếu</button><button onClick={() => { setKind("Chứng chỉ quỹ"); setCatalogSearch(""); }} className={kind === "Chứng chỉ quỹ" ? "bg-white text-[#245a42] shadow-sm" : "text-[#779080]"}>Quỹ</button><button onClick={() => { setKind("Vàng"); setCatalogSearch(""); }} className={kind === "Vàng" ? "bg-white text-[#245a42] shadow-sm" : "text-[#779080]"}>Vàng</button></div><div className="relative mt-3"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a59a]" /><Input value={catalogSearch} onChange={(event) => setCatalogSearch(event.target.value)} placeholder={kind === "Vàng" ? "SJC" : "Tìm mã hoặc tên tài sản"} className="h-11 rounded-xl border-[#dce5df] bg-white pl-9" autoFocus /></div><div className="mt-3 grid max-h-64 gap-2 overflow-y-auto pr-1">{filteredCatalog.map((item) => { const alreadyAdded = assets.some((asset) => asset.ticker === item.ticker); return <button key={item.ticker} onClick={() => void addAsset(item)} className={alreadyAdded ? "flex items-center justify-between rounded-2xl border border-[#dce8df] bg-[#f5f8f5] px-3 py-3 text-left" : "flex items-center justify-between rounded-2xl border border-[#e1ebe3] bg-white px-3 py-3 text-left hover:border-[#9fc6aa] hover:bg-[#f6fbf7]"}><span className="min-w-0"><span className="block text-sm font-semibold text-[#2b4637]">{item.name}</span><span className="mt-0.5 block text-[11px] text-[#89988e]">{item.ticker} · {item.description}</span></span><span className={alreadyAdded ? "ml-3 shrink-0 text-[11px] font-semibold text-[#8b9a90]" : "ml-3 shrink-0 text-[11px] font-semibold text-[#2a8057]"}>{alreadyAdded ? "Đã thêm" : "Thêm"}</span></button>; })}{filteredCatalog.length === 0 && <p className="rounded-2xl bg-white px-4 py-6 text-center text-xs text-[#8a988f]">Không tìm thấy tài sản phù hợp.</p>}</div><div className="mt-3 border-t border-[#e9eeea] pt-3"><p className="mb-2 text-[10px] uppercase tracking-[0.14em] text-[#9aa69f]">Hoặc nhập ticker tùy chỉnh</p><div className="flex gap-2"><Input value={ticker} onChange={(event) => setTicker(event.target.value)} onKeyDown={(event) => event.key === "Enter" && void addAsset()} placeholder="Ví dụ VNM.VN" className="h-10 rounded-xl border-[#dce5df] bg-white" /><Button onClick={() => void addAsset()} className="h-10 rounded-xl bg-[#173c2b] px-4 hover:bg-[#24543e]">Thêm</Button></div></div></div>}
             <CardContent className="p-0">
               <div className="hidden grid-cols-[1.5fr_0.8fr_0.8fr_0.8fr_28px] gap-4 px-6 py-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9aa69f] sm:grid"><span>Tài sản</span><span>Giá hiện tại</span><span>Biến động</span><span>Trạng thái</span><span /></div>
               <div className="divide-y divide-[#edf1ed]">
@@ -208,8 +216,8 @@ export default function Home() {
 
           <div className="space-y-6">
             <Card className="dashboard-card">
-              <CardHeader className="px-5 pb-3 pt-5"><div className="flex items-center justify-between"><div><p className="eyebrow">AI LENS</p><CardTitle className="mt-1 text-lg tracking-[-0.03em]">Nhận định tổng hợp</CardTitle></div><div className="ai-icon"><Sparkles size={16} /></div></div></CardHeader>
-              <CardContent className="px-5 pb-5"><div className="mb-4 rounded-2xl border border-[#e4ece6] bg-[#fbfdfb] p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-semibold text-[#2b7152]">Model phân tích</p><p className="mt-1 text-[11px] text-[#89968e]">Lựa chọn được lưu cho các lần đồng bộ sau.</p></div><select aria-label="Chọn model AI" value={selectedAiModel} disabled={!aiConfig?.enabled || isSavingAiModel} onChange={(event) => { const model = event.target.value as AiConfig["model"]; void saveAiModel(model); }} className="h-10 rounded-xl border border-[#dce5df] bg-white px-3 text-xs font-medium text-[#315542] outline-none focus:ring-2 focus:ring-[#b9d8c5]"><option value="gpt-4o-mini">gpt-4o-mini</option><option value="gpt-5-mini">gpt-5-mini</option></select></div><p className="mt-2 text-[10px] text-[#9aa59e]">{aiConfigError ? "Không gọi được API cấu hình OpenAI" : !aiConfig ? "Đang kiểm tra cấu hình…" : aiConfig.enabled ? "OpenAI đã sẵn sàng" : "Chưa cấu hình OPENAI_API_KEY trên Vercel"}</p></div><div className="rounded-2xl bg-[#f4f8f4] p-4"><div className="mb-3 flex items-center justify-between"><span className="text-xs font-semibold text-[#2b7152]">Đang chờ dữ liệu</span><span className="text-[10px] uppercase tracking-[0.14em] text-[#94a29a]">AI / 0 assets</span></div><p className="text-sm leading-6 text-[#65736b]">Sau lần đồng bộ đầu tiên, Lumen sẽ đưa ra tín hiệu <strong className="font-semibold text-[#31473a]">mua / bán / giữ</strong>, mức giá tham khảo và các rủi ro cần theo dõi.</p><div className="mt-4 flex items-center gap-2 text-[11px] text-[#8b9891]"><FileText size={13} />Không kết luận khi thiếu dữ liệu có nguồn</div></div><p className="mt-3 text-[11px] leading-5 text-[#9aa59e]">Phân tích AI chỉ mang tính tham khảo, không phải tư vấn đầu tư được cấp phép.</p></CardContent>
+              <CardHeader className="px-5 pb-3 pt-5"><div className="flex items-center justify-between"><div><div className="flex items-center gap-2"><p className="eyebrow">AI LENS</p><span className="rounded-full bg-[#e8f5ec] px-2 py-1 text-[9px] font-bold tracking-[0.12em] text-[#2b7653]">{aiConfig?.enabled ? "READY" : "SETUP"}</span></div><CardTitle className="mt-1 text-lg tracking-[-0.03em]">Phân tích đầu tư</CardTitle></div><div className="ai-icon"><Sparkles size={16} /></div></div></CardHeader>
+              <CardContent className="px-5 pb-5"><div className="mb-4 rounded-2xl border border-[#e4ece6] bg-[#fbfdfb] p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-semibold text-[#2b7152]">Model phân tích</p><p className="mt-1 text-[11px] text-[#89968e]">Lựa chọn được lưu cho các lần đồng bộ sau.</p></div><select aria-label="Chọn model AI" value={selectedAiModel} disabled={!aiConfig?.enabled || isSavingAiModel} onChange={(event) => { const model = event.target.value as AiConfig["model"]; void saveAiModel(model); }} className="h-10 rounded-xl border border-[#dce5df] bg-white px-3 text-xs font-medium text-[#315542] outline-none focus:ring-2 focus:ring-[#b9d8c5]"><option value="gpt-4o-mini">gpt-4o-mini</option><option value="gpt-5-mini">gpt-5-mini</option></select></div><p className="mt-2 text-[10px] text-[#9aa59e]">{aiConfigError ? "Không gọi được API cấu hình OpenAI" : !aiConfig ? "Đang kiểm tra cấu hình…" : aiConfig.enabled ? "OpenAI đã sẵn sàng" : "Chưa cấu hình OPENAI_API_KEY trên Vercel"}</p></div><div className="rounded-2xl bg-[#f4f8f4] p-4"><div className="mb-3 flex items-center justify-between"><span className="text-xs font-semibold text-[#2b7152]">{aiConfig?.enabled ? "Sẵn sàng phân tích" : "Cần cấu hình OpenAI"}</span><span className="text-[10px] uppercase tracking-[0.14em] text-[#94a29a]">AI / {assets.length} assets</span></div><p className="text-sm leading-6 text-[#65736b]">Sau khi đồng bộ có timestamp, Lumen sẽ đưa ra tín hiệu <strong className="font-semibold text-[#31473a]">mua / bán / giữ</strong>, giá tham khảo và rủi ro cho từng tài sản trong danh mục.</p><div className="mt-4 flex items-center gap-2 text-[11px] text-[#8b9891]"><FileText size={13} />Không kết luận khi thiếu dữ liệu có nguồn</div></div><p className="mt-3 text-[11px] leading-5 text-[#9aa59e]">Phân tích AI chỉ mang tính tham khảo, không phải tư vấn đầu tư được cấp phép.</p></CardContent>
             </Card>
             <PushNotificationCard />
             <Card className="dashboard-card">
