@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import handler, { buildAssetsFromQuotes, fetchNews, PORTFOLIO_AI_SYSTEM_PROMPT, readBody } from "../api/ai/analyze";
+import handler, { buildAnalysisMessages, buildAssetsFromQuotes, fetchNews, PORTFOLIO_AI_SYSTEM_PROMPT, readBody } from "../api/ai/analyze";
 
 describe("portfolio AI analysis contract", () => {
   it("defines a cautious prompt with signals, prices, reasoning and risk rules", () => {
@@ -28,6 +28,13 @@ describe("AI quote eligibility regression", () => {
     ]);
     expect(assets).toHaveLength(4);
     expect(assets.map((asset) => asset.ticker)).toEqual(["VNM.VN", "FPT.VN", "DCDS", "SJC"]);
+  });
+
+  it("propagates the user requirement with explicit priority to every AI analysis", () => {
+    const messages = buildAnalysisMessages({ ticker: "VNM.VN" }, { price: 65000, asOf: Date.now(), sourceName: "Yahoo Finance" }, [], "Chỉ phân tích điểm mua ngắn hạn, không tư vấn dài hạn");
+    expect(messages[0].content).toContain("Chỉ phân tích điểm mua ngắn hạn, không tư vấn dài hạn");
+    expect(messages[0].content).toContain("Bắt buộc ưu tiên");
+    expect(JSON.parse(messages[1].content).userRequirement).toBe("Chỉ phân tích điểm mua ngắn hạn, không tư vấn dài hạn");
   });
 
   it("combines CafeF and Yahoo Finance news with source metadata", async () => {

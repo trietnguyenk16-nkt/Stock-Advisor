@@ -107,12 +107,17 @@ export function buildAssetsFromQuotes(value: unknown) {
   return Array.from(clientQuoteMap(value).entries()).filter(([, quote]) => Number.isFinite(Number(quote.price)) && Number(quote.price) > 0).map(([ticker, quote]) => ({ id: null, ticker, display_name: String(quote.name ?? ticker), asset_type: String(quote.assetType ?? "equity"), provider_code: String(quote.providerCode ?? ticker), currency: String(quote.currency ?? "VND"), price: null, change_percent: null, as_of: null }));
 }
 
-async function analyze(model: string, asset: Record<string, unknown>, quote: Record<string, unknown>, news: Array<Record<string, unknown>>, requirement: string): Promise<PortfolioAnalysisResult> {
-  const system = requirement ? `${PORTFOLIO_AI_SYSTEM_PROMPT}\n\nYêu cầu đầu tư bổ sung của người dùng: ${requirement}` : PORTFOLIO_AI_SYSTEM_PROMPT;
-  const messages = [
+export function buildAnalysisMessages(asset: Record<string, unknown>, quote: Record<string, unknown>, news: Array<Record<string, unknown>>, requirement: string) {
+  const cleanRequirement = requirement.trim().slice(0, 1200);
+  const system = cleanRequirement ? `${PORTFOLIO_AI_SYSTEM_PROMPT}\n\nYÊU CẦU ƯU TIÊN CỦA NGƯỜI DÙNG:\n${cleanRequirement}\n\nBắt buộc ưu tiên và trả lời trực tiếp yêu cầu này trong phạm vi dữ liệu được cung cấp; không được bỏ qua hoặc thay thế bằng nhận định chung.` : PORTFOLIO_AI_SYSTEM_PROMPT;
+  return [
     { role: "system", content: system },
-    { role: "user", content: JSON.stringify({ asset, quote, news, instruction: "Phân tích giá hiện tại và tin tức. Chọn BUY/SELL nếu có cơ sở rõ; chỉ HOLD khi tín hiệu trung tính hoặc thiếu dữ liệu. Trả về JSON hợp lệ với signal, summary, referencePrice, targetPrice, risk, confidence, strategy, entryZone, positionSizing, takeProfit, stopLoss, invalidation." }) },
+    { role: "user", content: JSON.stringify({ asset, quote, news, userRequirement: cleanRequirement || null, instruction: "Phân tích giá hiện tại và tin tức. Trước tiên phải giải quyết userRequirement nếu có, sau đó mới bổ sung nhận định chung. Chọn BUY/SELL nếu có cơ sở rõ; chỉ HOLD khi tín hiệu trung tính hoặc thiếu dữ liệu. Trả về JSON hợp lệ với signal, summary, referencePrice, targetPrice, risk, confidence, strategy, entryZone, positionSizing, takeProfit, stopLoss, invalidation." }) },
   ];
+}
+
+async function analyze(model: string, asset: Record<string, unknown>, quote: Record<string, unknown>, news: Array<Record<string, unknown>>, requirement: string): Promise<PortfolioAnalysisResult> {
+  const messages = buildAnalysisMessages(asset, quote, news, requirement);
   const schema = { type: "json_schema", json_schema: { name: "manual_asset_analysis", strict: true, schema: { type: "object", properties: { signal: { type: "string", enum: ["BUY", "SELL", "HOLD"] }, summary: { type: "string" }, referencePrice: { type: "number" }, targetPrice: { type: "number" }, risk: { type: "string" }, confidence: { type: "number" }, strategy: { type: "string" }, entryZone: { type: "string" }, positionSizing: { type: "string" }, takeProfit: { type: "string" }, stopLoss: { type: "string" }, invalidation: { type: "string" } }, required: ["signal", "summary", "referencePrice", "targetPrice", "risk", "confidence", "strategy", "entryZone", "positionSizing", "takeProfit", "stopLoss", "invalidation"], additionalProperties: false } } };
   let lastError = "OpenAI không trả nội dung phân tích";
   for (const useSchema of [true, false]) {
@@ -174,10 +179,10 @@ export default async function handler(req: AnyRequest, res?: AnyResponse) {
         const news = await fetchNews(`${String(asset.ticker ?? "")} ${String(asset.display_name ?? "")}`.trim());
         let result: PortfolioAnalysisResult;
         let modelUsed = model;
-        try { result = await analyze(model, asset, quote, news, requestedTicker ? "" : additionalRequirement); } catch (primaryError) {
+        try { result = await analyze(model, asset, quote, news, additionalRequirement); } catch (primaryError) {
           if (model !== "gpt-5-mini") throw primaryError;
           modelUsed = "gpt-4o-mini";
-          result = await analyze(modelUsed, asset, quote, news, requestedTicker ? "" : additionalRequirement);
+          result = await analyze(modelUsed, asset, quote, news, additionalRequirement);
         }
         if (asset.id != null) await pool.query(`INSERT INTO stock_advisor.asset_analyses (asset_id, run_key, signal, summary, reference_price, target_price, risk, confidence, as_of) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (run_key, asset_id) DO UPDATE SET signal=EXCLUDED.signal, summary=EXCLUDED.summary, reference_price=EXCLUDED.reference_price, target_price=EXCLUDED.target_price, risk=EXCLUDED.risk, confidence=EXCLUDED.confidence, as_of=EXCLUDED.as_of`).catch(() => undefined);
         results.push({ ticker: asset.ticker, name: asset.display_name, model: modelUsed, ...result });
