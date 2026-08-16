@@ -33,7 +33,8 @@ describe("AI quote eligibility regression", () => {
   it("propagates the user requirement with explicit priority to every AI analysis", () => {
     const messages = buildAnalysisMessages({ ticker: "VNM.VN" }, { price: 65000, asOf: Date.now(), sourceName: "Yahoo Finance" }, [], "Chỉ phân tích điểm mua ngắn hạn, không tư vấn dài hạn");
     expect(messages[0].content).toContain("Chỉ phân tích điểm mua ngắn hạn, không tư vấn dài hạn");
-    expect(messages[0].content).toContain("Bắt buộc ưu tiên");
+    expect(messages[0].content).toContain("mục tiêu chính");
+    expect(messages[0].content).not.toContain("Không được chọn HOLD theo mặc định");
     expect(JSON.parse(messages[1].content).userRequirement).toBe("Chỉ phân tích điểm mua ngắn hạn, không tư vấn dài hạn");
   });
 

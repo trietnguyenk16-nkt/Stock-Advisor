@@ -284,3 +284,7 @@
 
 - [x] Clear the previous AI result state immediately when a new analysis run starts while preserving database history; `setAiAnalyses([])` runs before quote refetch/API call
 - [x] Add regression coverage for new-run result isolation, validate, push and checkpoint; `server/aiResultReset.test.ts`, commit `b173870` pushed
+
+- [x] Audit and fix user-requirement priority mode so custom instructions are applied without being diluted by generic prompt guidance; requirement-first mode now uses a dedicated system context
+- [x] Persist and query AI analysis history by date with summary-first and expandable detail; History reads `ai_advice_runs.response_json` and expands per-asset details
+- [x] Fix sync history run count display, add regression tests, validate, push and checkpoint; History filters runs by Vietnam date and shows count badges

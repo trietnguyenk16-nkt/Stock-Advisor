@@ -109,7 +109,7 @@ export function buildAssetsFromQuotes(value: unknown) {
 
 export function buildAnalysisMessages(asset: Record<string, unknown>, quote: Record<string, unknown>, news: Array<Record<string, unknown>>, requirement: string) {
   const cleanRequirement = requirement.trim().slice(0, 1200);
-  const system = cleanRequirement ? `${PORTFOLIO_AI_SYSTEM_PROMPT}\n\nYÊU CẦU ƯU TIÊN CỦA NGƯỜI DÙNG:\n${cleanRequirement}\n\nBắt buộc ưu tiên và trả lời trực tiếp yêu cầu này trong phạm vi dữ liệu được cung cấp; không được bỏ qua hoặc thay thế bằng nhận định chung.` : PORTFOLIO_AI_SYSTEM_PROMPT;
+  const system = cleanRequirement ? `Chế độ phân tích theo yêu cầu người dùng. Không áp dụng các hướng dẫn chiến lược mặc định của chế độ phân tích danh mục; hãy tập trung trả lời chính xác yêu cầu dưới đây bằng dữ liệu giá, timestamp và tin tức có trong payload. Không bịa dữ liệu, không cam kết lợi nhuận và nếu dữ liệu không đủ thì nói rõ giới hạn. YÊU CẦU NGƯỜI DÙNG:\n${cleanRequirement}\n\nYêu cầu này là mục tiêu chính của lần phân tích; không được thay thế bằng nhận định BUY/SELL/HOLD chung nếu người dùng không yêu cầu.` : PORTFOLIO_AI_SYSTEM_PROMPT
   return [
     { role: "system", content: system },
     { role: "user", content: JSON.stringify({ asset, quote, news, userRequirement: cleanRequirement || null, instruction: "Phân tích giá hiện tại và tin tức. Trước tiên phải giải quyết userRequirement nếu có, sau đó mới bổ sung nhận định chung. Chọn BUY/SELL nếu có cơ sở rõ; chỉ HOLD khi tín hiệu trung tính hoặc thiếu dữ liệu. Trả về JSON hợp lệ với signal, summary, referencePrice, targetPrice, risk, confidence, strategy, entryZone, positionSizing, takeProfit, stopLoss, invalidation." }) },
