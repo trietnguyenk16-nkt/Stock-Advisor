@@ -235,14 +235,14 @@
 - [x] Add route-consolidation compatibility coverage and verify build function count
 - [x] Push Hobby-compatible build fix and checkpoint release
 
-- [ ] Create GitHub issues for watchlist market data, historical comparison and detailed sync history
-- [ ] Create GitHub issues for AI requirements, single-ticker analysis and advice history
-- [ ] Create GitHub issue for production sync, fund NAV, notification and email verification
-- [ ] Add gold bid/ask, explicit day-over-day change reference, and source column to the Watchlist
-- [ ] Add selected-date price comparison column with reset behavior and red/green/yellow value state
-- [ ] Add detailed sync records/history showing assets, source values, timing, changes and outcomes
-- [ ] Add AI requirement input, ticker-only request validation, trusted-news context and readable workflow guidance
-- [ ] Persist AI advice runs, user requirements and advice date in a dedicated Supabase table
-- [ ] Fix new-asset and fund synchronization plus AI quote eligibility in the production contract
-- [ ] Recheck notification/email readiness and replace dashboard tagline with meaningful product copy
+- [x] Create GitHub issues for watchlist market data, historical comparison and detailed sync history
+- [x] Create GitHub issues for AI requirements, single-ticker analysis and advice history
+- [x] Create GitHub issue for production sync, fund NAV, notification and email verification
+- [x] Add gold bid/ask, explicit day-over-day change reference, and source column to the Watchlist
+- [x] Add selected-date price comparison column with reset behavior and red/green/yellow value state
+- [x] Add detailed sync records/history showing assets, source values, timing, changes and outcomes
+- [x] Add AI requirement input, ticker-only request validation, trusted-news context and readable workflow guidance
+- [x] Persist AI advice runs, user requirements and advice date in a dedicated Supabase table
+- [x] Fix new-asset and fund synchronization plus AI quote eligibility in the production contract
+- [x] Recheck notification/email readiness and replace dashboard tagline with meaningful product copy
 - [ ] Test, commit, push, tag completed GitHub issues DONE, and checkpoint every completed release
