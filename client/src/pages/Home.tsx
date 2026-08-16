@@ -23,7 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { trpc } from "@/lib/trpc";
+import { directApi, type AiConfig, type Quote } from "@/lib/directApi";
 import { Input } from "@/components/ui/input";
 import { Link } from "wouter";
 import PushNotificationCard from "@/components/PushNotificationCard";
@@ -68,46 +68,42 @@ export default function Home() {
   const [isAdding, setIsAdding] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState("Chưa có lần đồng bộ");
-  const [selectedAiModel, setSelectedAiModel] = useState<"gpt-4o-mini" | "gpt-5-mini">("gpt-4o-mini");
-  const previousAiModel = useRef<"gpt-4o-mini" | "gpt-5-mini">("gpt-4o-mini");
-  const utils = trpc.useUtils();
-  const syncNow = trpc.market.syncNow.useMutation({
-    onSuccess: async () => {
-      await Promise.all([
-        utils.market.quote.invalidate(),
-        utils.market.dashboard.invalidate(),
-        utils.market.history.invalidate(),
-        utils.ai.config.invalidate(),
-      ]);
-      toast.success("Đã đồng bộ dữ liệu", { description: "Giá và trạng thái AI đã được làm mới." });
-    },
-    onError: (error) => {
-      toast.error("Đồng bộ chưa thành công", { description: error.message || "Vui lòng kiểm tra cấu hình Vercel và Supabase." });
-    },
-  });
-  const aiConfig = trpc.ai.config.useQuery();
-  const saveAiModel = trpc.ai.setModel.useMutation({
-    onSuccess: (result) => {
+  const [quoteVersion, setQuoteVersion] = useState(0);
+  const [aiConfig, setAiConfig] = useState<AiConfig | null>(null);
+  const [aiConfigError, setAiConfigError] = useState(false);
+  const [isSavingAiModel, setIsSavingAiModel] = useState(false);
+  const [selectedAiModel, setSelectedAiModel] = useState<AiConfig["model"]>("gpt-4o-mini");
+  const previousAiModel = useRef<AiConfig["model"]>("gpt-4o-mini");
+
+  useEffect(() => {
+    directApi.aiConfig().then((config) => {
+      setAiConfig(config);
+      setSelectedAiModel(config.model);
+      previousAiModel.current = config.model;
+    }).catch(() => setAiConfigError(true));
+  }, []);
+
+  const saveAiModel = async (model: AiConfig["model"]) => {
+    setSelectedAiModel(model);
+    setIsSavingAiModel(true);
+    try {
+      const result = await directApi.saveAiModel(model);
+      if (!result.ok) throw new Error("Không lưu được model vào Supabase");
       previousAiModel.current = result.model;
-      setSelectedAiModel(result.model);
       toast.success("Đã lưu model AI", { description: `Các lần đồng bộ sau sẽ dùng ${result.model}.` });
-    },
-    onError: () => {
+    } catch {
       setSelectedAiModel(previousAiModel.current);
       toast.error("Không thể lưu model AI", { description: "Giữ nguyên lựa chọn trước đó và thử lại sau." });
-    },
-  });
+    } finally {
+      setIsSavingAiModel(false);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem("stock-advisor-assets", JSON.stringify(assets));
   }, [assets]);
 
-  useEffect(() => {
-    if (aiConfig.data?.model) {
-      setSelectedAiModel(aiConfig.data.model);
-      previousAiModel.current = aiConfig.data.model;
-    }
-  }, [aiConfig.data?.model]);
+
 
   const syncedAssets = useMemo(() => assets.filter((asset) => asset.price !== undefined), [assets]);
 
@@ -124,10 +120,13 @@ export default function Home() {
   const refresh = async () => {
     setIsRefreshing(true);
     try {
-      await syncNow.mutateAsync();
+      const result = await directApi.sync();
+      if (result.status === "failed") throw new Error(result.message ?? "Manual sync failed");
+      setQuoteVersion((value) => value + 1);
       setLastUpdated(new Date().toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }));
-    } catch {
-      // The mutation error toast already explains the backend failure.
+      toast.success("Đã đồng bộ dữ liệu", { description: "Giá và trạng thái AI đã được làm mới." });
+    } catch (error) {
+      toast.error("Đồng bộ chưa thành công", { description: error instanceof Error ? error.message : "Vui lòng kiểm tra cấu hình Vercel và Supabase." });
     } finally {
       setIsRefreshing(false);
     }
@@ -181,7 +180,7 @@ export default function Home() {
             <CardContent className="p-0">
               <div className="hidden grid-cols-[1.5fr_0.8fr_0.8fr_0.8fr_28px] gap-4 px-6 py-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#9aa69f] sm:grid"><span>Tài sản</span><span>Giá hiện tại</span><span>Biến động</span><span>Trạng thái</span><span /></div>
               <div className="divide-y divide-[#edf1ed]">
-                {assets.map((asset) => <AssetRow key={asset.ticker} asset={asset} onRemove={removeAsset} />)}
+                {assets.map((asset) => <AssetRow key={asset.ticker} asset={asset} refreshKey={quoteVersion} onQuote={(ticker, quote) => setAssets((current) => current.map((item) => item.ticker === ticker ? { ...item, name: quote.name, currency: quote.currency || item.currency, price: quote.price, change: quote.change } : item))} onRemove={removeAsset} />)}
                 {assets.length === 0 && <div className="px-6 py-14 text-center"><Search className="mx-auto mb-3 text-[#a7b6ad]" size={22} /><p className="text-sm font-medium">Watchlist đang trống</p><p className="mt-1 text-xs text-[#8b9891]">Thêm ticker đầu tiên để bắt đầu theo dõi.</p></div>}
               </div>
             </CardContent>
@@ -190,7 +189,7 @@ export default function Home() {
           <div className="space-y-6">
             <Card className="dashboard-card">
               <CardHeader className="px-5 pb-3 pt-5"><div className="flex items-center justify-between"><div><p className="eyebrow">AI LENS</p><CardTitle className="mt-1 text-lg tracking-[-0.03em]">Nhận định tổng hợp</CardTitle></div><div className="ai-icon"><Sparkles size={16} /></div></div></CardHeader>
-              <CardContent className="px-5 pb-5"><div className="mb-4 rounded-2xl border border-[#e4ece6] bg-[#fbfdfb] p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-semibold text-[#2b7152]">Model phân tích</p><p className="mt-1 text-[11px] text-[#89968e]">Lựa chọn được lưu cho các lần đồng bộ sau.</p></div><select aria-label="Chọn model AI" value={selectedAiModel} disabled={!aiConfig.data?.enabled || saveAiModel.isPending} onChange={(event) => { const model = event.target.value as "gpt-4o-mini" | "gpt-5-mini"; setSelectedAiModel(model); saveAiModel.mutate({ model }); }} className="h-10 rounded-xl border border-[#dce5df] bg-white px-3 text-xs font-medium text-[#315542] outline-none focus:ring-2 focus:ring-[#b9d8c5]"><option value="gpt-4o-mini">gpt-4o-mini</option><option value="gpt-5-mini">gpt-5-mini</option></select></div><p className="mt-2 text-[10px] text-[#9aa59e]">{aiConfig.isLoading ? "Đang kiểm tra cấu hình…" : aiConfig.isError ? "Không gọi được API cấu hình OpenAI" : aiConfig.data?.enabled ? "OpenAI đã sẵn sàng" : "Chưa cấu hình OPENAI_API_KEY trên Vercel"}</p></div><div className="rounded-2xl bg-[#f4f8f4] p-4"><div className="mb-3 flex items-center justify-between"><span className="text-xs font-semibold text-[#2b7152]">Đang chờ dữ liệu</span><span className="text-[10px] uppercase tracking-[0.14em] text-[#94a29a]">AI / 0 assets</span></div><p className="text-sm leading-6 text-[#65736b]">Sau lần đồng bộ đầu tiên, Lumen sẽ đưa ra tín hiệu <strong className="font-semibold text-[#31473a]">mua / bán / giữ</strong>, mức giá tham khảo và các rủi ro cần theo dõi.</p><div className="mt-4 flex items-center gap-2 text-[11px] text-[#8b9891]"><FileText size={13} />Không kết luận khi thiếu dữ liệu có nguồn</div></div><p className="mt-3 text-[11px] leading-5 text-[#9aa59e]">Phân tích AI chỉ mang tính tham khảo, không phải tư vấn đầu tư được cấp phép.</p></CardContent>
+              <CardContent className="px-5 pb-5"><div className="mb-4 rounded-2xl border border-[#e4ece6] bg-[#fbfdfb] p-4"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-semibold text-[#2b7152]">Model phân tích</p><p className="mt-1 text-[11px] text-[#89968e]">Lựa chọn được lưu cho các lần đồng bộ sau.</p></div><select aria-label="Chọn model AI" value={selectedAiModel} disabled={!aiConfig?.enabled || isSavingAiModel} onChange={(event) => { const model = event.target.value as AiConfig["model"]; void saveAiModel(model); }} className="h-10 rounded-xl border border-[#dce5df] bg-white px-3 text-xs font-medium text-[#315542] outline-none focus:ring-2 focus:ring-[#b9d8c5]"><option value="gpt-4o-mini">gpt-4o-mini</option><option value="gpt-5-mini">gpt-5-mini</option></select></div><p className="mt-2 text-[10px] text-[#9aa59e]">{aiConfigError ? "Không gọi được API cấu hình OpenAI" : !aiConfig ? "Đang kiểm tra cấu hình…" : aiConfig.enabled ? "OpenAI đã sẵn sàng" : "Chưa cấu hình OPENAI_API_KEY trên Vercel"}</p></div><div className="rounded-2xl bg-[#f4f8f4] p-4"><div className="mb-3 flex items-center justify-between"><span className="text-xs font-semibold text-[#2b7152]">Đang chờ dữ liệu</span><span className="text-[10px] uppercase tracking-[0.14em] text-[#94a29a]">AI / 0 assets</span></div><p className="text-sm leading-6 text-[#65736b]">Sau lần đồng bộ đầu tiên, Lumen sẽ đưa ra tín hiệu <strong className="font-semibold text-[#31473a]">mua / bán / giữ</strong>, mức giá tham khảo và các rủi ro cần theo dõi.</p><div className="mt-4 flex items-center gap-2 text-[11px] text-[#8b9891]"><FileText size={13} />Không kết luận khi thiếu dữ liệu có nguồn</div></div><p className="mt-3 text-[11px] leading-5 text-[#9aa59e]">Phân tích AI chỉ mang tính tham khảo, không phải tư vấn đầu tư được cấp phép.</p></CardContent>
             </Card>
             <PushNotificationCard />
             <Card className="dashboard-card">
@@ -210,9 +209,18 @@ function Metric({ label, value, suffix, icon, accent = "default", compact = fals
   return <div className="metric-card"><div className={`metric-icon ${accent}`}><span>{icon}</span></div><div className="min-w-0"><p className="text-[11px] font-medium text-[#84928a]">{label}</p><div className={`mt-1 flex items-baseline gap-1.5 ${compact ? "text-base" : "text-xl"} font-semibold tracking-[-0.04em] text-[#20352a]`}><span className="truncate">{value}</span><span className="text-[11px] font-medium tracking-normal text-[#a0aaa4]">{suffix}</span></div></div></div>;
 }
 
-function AssetRow({ asset, onRemove }: { asset: Asset; onRemove: (ticker: string) => void }) {
-  const quote = trpc.market.quote.useQuery({ ticker: asset.ticker }, { retry: false, staleTime: 1000 * 60 * 10 });
-  const liveAsset: Asset = quote.data ? { ...asset, name: quote.data.name, currency: quote.data.currency || asset.currency, price: quote.data.price, change: quote.data.change } : asset;
+function AssetRow({ asset, onRemove, refreshKey, onQuote }: { asset: Asset; onRemove: (ticker: string) => void; refreshKey: number; onQuote: (ticker: string, quote: Quote) => void }) {
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [isLoadingQuote, setIsLoadingQuote] = useState(true);
+  const [quoteError, setQuoteError] = useState(false);
+  useEffect(() => {
+    let active = true;
+    setIsLoadingQuote(true);
+    setQuoteError(false);
+    directApi.quote(asset.ticker).then((value) => { if (active) { setQuote(value); onQuote(asset.ticker, value); } }).catch(() => { if (active) setQuoteError(true); }).finally(() => { if (active) setIsLoadingQuote(false); });
+    return () => { active = false; };
+  }, [asset.ticker, refreshKey]);
+  const liveAsset: Asset = quote ? { ...asset, name: quote.name, currency: quote.currency || asset.currency, price: quote.price, change: quote.change } : asset;
   const hasChange = liveAsset.change !== undefined;
-  return <div className="asset-row relative grid gap-3 px-5 py-4 pr-14 sm:grid-cols-[1.5fr_0.8fr_0.8fr_0.8fr_28px] sm:items-center sm:gap-4 sm:px-6"><div className="flex min-w-0 items-center gap-3"><div className={`ticker-badge ${liveAsset.kind === "Vàng" ? "gold" : liveAsset.kind === "Chứng chỉ quỹ" ? "fund" : "stock"}`}>{liveAsset.ticker.replace(".VN", "").replace("=F", "").slice(0, 4)}</div><div className="min-w-0"><p className="truncate text-sm font-semibold text-[#2c3e32]">{liveAsset.name}</p><p className="mt-0.5 truncate text-[11px] text-[#95a199]">{liveAsset.ticker} · {liveAsset.kind}</p></div></div><div className="flex items-center justify-between sm:block"><span className="text-[10px] uppercase tracking-[0.12em] text-[#a0aaa4] sm:hidden">Giá</span><p className="text-sm font-semibold text-[#304439]">{quote.isLoading ? "Đang tải" : formatPrice(liveAsset)} <span className="text-[10px] font-medium text-[#9da8a1]">{liveAsset.currency}</span></p></div><div className="flex items-center justify-between sm:block"><span className="text-[10px] uppercase tracking-[0.12em] text-[#a0aaa4] sm:hidden">Biến động</span><p className={`flex items-center gap-1 text-sm font-semibold ${hasChange && liveAsset.change! >= 0 ? "text-[#2d8961]" : hasChange ? "text-[#c45e54]" : "text-[#909d95]"}`}>{hasChange && (liveAsset.change! >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />)}{formatChange(liveAsset)}</p></div><div className="flex items-center justify-between sm:block"><span className="text-[10px] uppercase tracking-[0.12em] text-[#a0aaa4] sm:hidden">Trạng thái</span><Badge variant="outline" className="rounded-full border-[#dce8df] bg-[#f6faf7] text-[10px] font-medium text-[#65806f]">{quote.isLoading ? "Đang tải" : quote.isError ? "Không có dữ liệu" : hasChange ? "Đã cập nhật" : "Chờ đồng bộ"}</Badge></div><button onClick={() => onRemove(asset.ticker)} className="absolute right-4 top-4 grid min-h-11 min-w-11 place-items-center rounded-full text-[#b2bdb6] transition hover:bg-[#f3f7f3] hover:text-[#bd5e54] sm:static sm:min-h-0 sm:min-w-0" aria-label={`Xóa ${asset.ticker}`}><Trash2 size={15} /></button></div>;
+  return <div className="asset-row relative grid gap-3 px-5 py-4 pr-14 sm:grid-cols-[1.5fr_0.8fr_0.8fr_0.8fr_28px] sm:items-center sm:gap-4 sm:px-6"><div className="flex min-w-0 items-center gap-3"><div className={`ticker-badge ${liveAsset.kind === "Vàng" ? "gold" : liveAsset.kind === "Chứng chỉ quỹ" ? "fund" : "stock"}`}>{liveAsset.ticker.replace(".VN", "").replace("=F", "").slice(0, 4)}</div><div className="min-w-0"><p className="truncate text-sm font-semibold text-[#2c3e32]">{liveAsset.name}</p><p className="mt-0.5 truncate text-[11px] text-[#95a199]">{liveAsset.ticker} · {liveAsset.kind}</p></div></div><div className="flex items-center justify-between sm:block"><span className="text-[10px] uppercase tracking-[0.12em] text-[#a0aaa4] sm:hidden">Giá</span><p className="text-sm font-semibold text-[#304439]">{isLoadingQuote ? "Đang tải" : formatPrice(liveAsset)} <span className="text-[10px] font-medium text-[#9da8a1]">{liveAsset.currency}</span></p></div><div className="flex items-center justify-between sm:block"><span className="text-[10px] uppercase tracking-[0.12em] text-[#a0aaa4] sm:hidden">Biến động</span><p className={`flex items-center gap-1 text-sm font-semibold ${hasChange && liveAsset.change! >= 0 ? "text-[#2d8961]" : hasChange ? "text-[#c45e54]" : "text-[#909d95]"}`}>{hasChange && (liveAsset.change! >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />)}{formatChange(liveAsset)}</p></div><div className="flex items-center justify-between sm:block"><span className="text-[10px] uppercase tracking-[0.12em] text-[#a0aaa4] sm:hidden">Trạng thái</span><Badge variant="outline" className="rounded-full border-[#dce8df] bg-[#f6faf7] text-[10px] font-medium text-[#65806f]">{isLoadingQuote ? "Đang tải" : quoteError ? "Không có dữ liệu" : hasChange ? "Đã cập nhật" : "Chờ đồng bộ"}</Badge></div><button onClick={() => onRemove(asset.ticker)} className="absolute right-4 top-4 grid min-h-11 min-w-11 place-items-center rounded-full text-[#b2bdb6] transition hover:bg-[#f3f7f3] hover:text-[#bd5e54] sm:static sm:min-h-0 sm:min-w-0" aria-label={`Xóa ${asset.ticker}`}><Trash2 size={15} /></button></div>;
 }

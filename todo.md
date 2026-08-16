@@ -124,8 +124,15 @@
 
 - [ ] Sửa lỗi HTTP 500 trên Vercel `/api/trpc/*`, kiểm tra OpenAI config, market quote và push config production
 
-- [ ] Cô lập lỗi runtime Vercel function sau deployment mới và thay handler tRPC bằng adapter tối giản có fallback an toàn
+- [x] Cô lập lỗi runtime Vercel function sau deployment mới và thay handler tRPC bằng adapter tối giản có fallback an toàn
 
 - [ ] Sửa OpenAI status trên Vercel và bảo đảm manual sync cập nhật dữ liệu rồi refresh các query dashboard
 
-- [ ] Thay Vercel tRPC catch-all đang crash bằng API functions độc lập cho AI config, quote và manual sync; cập nhật frontend gọi đúng endpoints
+- [x] Thay Vercel tRPC catch-all đang crash bằng dispatcher tối giản cho AI config, quote, manual sync và push config
+
+- [ ] Tự rà soát và gia cố production Vercel để AI config và manual sync hoạt động mà không cần người dùng kiểm tra ngay
+
+- [x] Tách các endpoint production trực tiếp cho AI config, model selection, quote, manual sync, history và push config
+- [x] Cập nhật frontend dùng các endpoint trực tiếp thay vì phụ thuộc batch tRPC catch-all
+- [x] Thêm test request/response contract cho direct API endpoints và frontend không phụ thuộc tRPC catch-all
+- [ ] Redeploy bản mới nhất và xác minh code path production; nếu không có domain/credentials thì ghi rõ bước người dùng cần thực hiện

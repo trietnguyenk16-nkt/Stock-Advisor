@@ -13,7 +13,9 @@ function parseInput(raw: unknown): unknown {
 function readBatchInput(request: Request): Record<string, ProcedureInput> {
   const url = new URL(request.url);
   try {
-    return JSON.parse(url.searchParams.get("input") ?? "{}") as Record<string, ProcedureInput>;
+    const parsed = JSON.parse(url.searchParams.get("input") ?? "{}");
+    if (parsed && typeof parsed === "object" && "json" in parsed) return { "0": parsed as ProcedureInput };
+    return parsed as Record<string, ProcedureInput>;
   } catch {
     return {};
   }
@@ -55,20 +57,36 @@ async function quote(ticker: string) {
 
 async function dispatch(path: string, input: unknown) {
   if (path === "ai.config") {
-    return { enabled: Boolean(process.env.OPENAI_API_KEY), model: getConfiguredAiModel(await getAiModel()), models: AI_MODELS };
+    let model = getConfiguredAiModel();
+    try {
+      model = getConfiguredAiModel(await getAiModel());
+    } catch (error) {
+      console.warn("[Vercel API] ai.config database fallback:", error instanceof Error ? error.message : error);
+    }
+    return { enabled: Boolean(process.env.OPENAI_API_KEY), model, models: AI_MODELS };
   }
   if (path === "ai.setModel") {
     const model = (input as { model?: string } | undefined)?.model ?? "";
     if (!AI_MODELS.includes(model as (typeof AI_MODELS)[number])) throw new Error("Model AI không được hỗ trợ");
-    const saved = await setAiModel(model);
-    return { ok: Boolean(saved), model };
+    try {
+      const saved = await setAiModel(model);
+      return { ok: Boolean(saved), model };
+    } catch (error) {
+      console.warn("[Vercel API] ai.setModel database error:", error instanceof Error ? error.message : error);
+      return { ok: false, model, error: "Không lưu được model vào Supabase" };
+    }
   }
   if (path === "market.quote") {
     return quote(String((input as { ticker?: string } | undefined)?.ticker ?? ""));
   }
   if (path === "market.syncNow") {
-    const { syncMarket } = await import("../../server/syncMarket");
-    return syncMarket(`manual:${new Date().toISOString().slice(0, 16)}`);
+    try {
+      const { syncMarket } = await import("../../server/syncMarket");
+      return await syncMarket(`manual:${new Date().toISOString().slice(0, 16)}`);
+    } catch (error) {
+      console.error("[Vercel API] manual sync error:", error);
+      return { status: "failed", message: error instanceof Error ? error.message : "Manual sync failed" };
+    }
   }
   if (path === "market.history") {
     const { getEmailHistory, getSyncHistory } = await import("../../server/db");
@@ -91,7 +109,7 @@ async function dispatch(path: string, input: unknown) {
   throw new Error(`Procedure không được hỗ trợ trên Vercel: ${path}`);
 }
 
-export default async function handler(request: Request) {
+async function handleWebRequest(request: Request) {
   const url = new URL(request.url);
   const paths = url.pathname.split("/").filter(Boolean).pop()?.split(",") ?? [];
   const batch = url.searchParams.get("batch") === "1";
@@ -104,4 +122,34 @@ export default async function handler(request: Request) {
     }
   }));
   return Response.json(batch || paths.length > 1 ? results : results[0]);
+}
+
+async function nodeRequestToWebRequest(request: any): Promise<Request> {
+  const headers = new Headers(request.headers ?? {});
+  const host = headers.get("host") ?? "localhost";
+  const url = new URL(request.url ?? "/", `https://${host}`);
+  const init: RequestInit = { method: request.method ?? "GET", headers };
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    const chunks: Buffer[] = [];
+    for await (const chunk of request) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    init.body = Buffer.concat(chunks);
+  }
+  return new Request(url, init);
+}
+
+export default async function handler(request: any, response?: any) {
+  if (response && typeof response.end === "function") {
+    try {
+      const webResponse = await handleWebRequest(await nodeRequestToWebRequest(request));
+      response.statusCode = webResponse.status;
+      webResponse.headers.forEach((value, key) => response.setHeader(key, value));
+      response.end(Buffer.from(await webResponse.arrayBuffer()));
+    } catch (error) {
+      response.statusCode = 500;
+      response.setHeader("content-type", "application/json");
+      response.end(JSON.stringify({ error: { message: error instanceof Error ? error.message : "Vercel API failed" } }));
+    }
+    return;
+  }
+  return handleWebRequest(request as Request);
 }
