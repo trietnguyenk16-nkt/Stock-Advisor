@@ -1,5 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
-import handler from "../api/ai/analyze";
+import handler, { PORTFOLIO_AI_SYSTEM_PROMPT } from "../api/ai/analyze";
+
+describe("portfolio AI analysis contract", () => {
+  it("defines a cautious prompt with signals, prices, reasoning and risk rules", () => {
+    expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("BUY, SELL hoặc HOLD");
+    expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("giá mục tiêu");
+    expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("tin tức");
+    expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("HOLD");
+    expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("không phải tư vấn đầu tư");
+  });
+});
 
 describe("direct AI analyze endpoint", () => {
   it("returns a structured 503 when database configuration is missing", async () => {

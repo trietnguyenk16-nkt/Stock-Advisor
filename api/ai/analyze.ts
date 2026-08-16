@@ -1,7 +1,9 @@
 type AnyRequest = { method?: string; body?: unknown };
 type AnyResponse = { status?: (code: number) => AnyResponse; json?: (body: unknown) => unknown; setHeader?: (name: string, value: string) => void; end?: (body?: string) => void };
 
-type AnalysisResult = { signal: "BUY" | "SELL" | "HOLD"; summary: string; referencePrice: number; targetPrice: number; risk: string; confidence: number };
+export type PortfolioAnalysisResult = { signal: "BUY" | "SELL" | "HOLD"; summary: string; referencePrice: number; targetPrice: number; risk: string; confidence: number; news: Array<{ title: string; publisher: string; link: string; publishedAt: string | null }> };
+
+export const PORTFOLIO_AI_SYSTEM_PROMPT = `Bạn là chuyên gia hỗ trợ phân tích danh mục tài sản Việt Nam, gồm cổ phiếu, chứng chỉ quỹ và vàng. Hãy phân tích thận trọng dựa duy nhất trên dữ liệu giá có timestamp và tin tức được cung cấp; tuyệt đối không bịa dữ liệu, không coi tin đồn là sự thật và không cam kết lợi nhuận. Với mỗi mã, bắt buộc chọn một tín hiệu BUY, SELL hoặc HOLD; nêu giá tham chiếu, giá mục tiêu tham khảo, luận cứ liên kết với biến động giá và tin tức, rủi ro chính, cùng độ tin cậy từ 0 đến 1. Nếu thiếu giá hoặc thiếu nguồn đáng tin cậy, ưu tiên HOLD, nói rõ thiếu dữ liệu và giảm confidence. Đây là thông tin tham khảo, không phải tư vấn đầu tư được cấp phép.`;
 
 function send(res: AnyResponse | undefined, body: unknown, status = 200) {
   if (res?.status && res.json) return res.status(status).json(body);
@@ -19,7 +21,16 @@ function modelFrom(value: unknown) {
   return value === "gpt-5-mini" ? "gpt-5-mini" : "gpt-4o-mini";
 }
 
-async function analyze(model: string, asset: Record<string, unknown>, quote: Record<string, unknown>): Promise<AnalysisResult> {
+async function fetchNews(symbol: string) {
+  try {
+    const response = await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(symbol)}&newsCount=5&quotesCount=0`, { headers: { accept: "application/json" } });
+    if (!response.ok) return [];
+    const payload = await response.json() as { news?: Array<{ title?: string; publisher?: string; link?: string; providerPublishTime?: number }> };
+    return (payload.news ?? []).slice(0, 5).map((item) => ({ title: item.title ?? "", publisher: item.publisher ?? "Yahoo Finance", link: item.link ?? "", publishedAt: item.providerPublishTime ? new Date(item.providerPublishTime * 1000).toISOString() : null })).filter((item) => item.title);
+  } catch { return []; }
+}
+
+async function analyze(model: string, asset: Record<string, unknown>, quote: Record<string, unknown>, news: Array<Record<string, unknown>>): Promise<PortfolioAnalysisResult> {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { authorization: `Bearer ${process.env.OPENAI_API_KEY}`, "content-type": "application/json" },
@@ -27,8 +38,8 @@ async function analyze(model: string, asset: Record<string, unknown>, quote: Rec
       model,
       ...(model === "gpt-5-mini" ? { reasoning_effort: "low" } : {}),
       messages: [
-        { role: "system", content: "Bạn là trợ lý phân tích tài sản Việt Nam. Chỉ dùng dữ liệu được cung cấp, thận trọng, không khẳng định chắc chắn. Trả JSON đúng schema." },
-        { role: "user", content: JSON.stringify({ asset, quote, instruction: "Chọn BUY, SELL hoặc HOLD. Nêu referencePrice, targetPrice, summary, risk và confidence từ 0 đến 1. Nếu thiếu cơ sở, chọn HOLD và nói rõ rủi ro." }) },
+        { role: "system", content: PORTFOLIO_AI_SYSTEM_PROMPT },
+        { role: "user", content: JSON.stringify({ asset, quote, news, instruction: "Phân tích mã này trong danh mục. Liên kết luận điểm với giá và từng tin có nguồn. Chọn BUY, SELL hoặc HOLD; nêu giá tham chiếu, giá mục tiêu, luận cứ, rủi ro và confidence." }) },
       ],
       response_format: { type: "json_schema", json_schema: { name: "manual_asset_analysis", strict: true, schema: { type: "object", properties: { signal: { type: "string", enum: ["BUY", "SELL", "HOLD"] }, summary: { type: "string" }, referencePrice: { type: "number" }, targetPrice: { type: "number" }, risk: { type: "string" }, confidence: { type: "number" } }, required: ["signal", "summary", "referencePrice", "targetPrice", "risk", "confidence"], additionalProperties: false } } },
     }),
@@ -38,7 +49,7 @@ async function analyze(model: string, asset: Record<string, unknown>, quote: Rec
   const payload = JSON.parse(text) as { choices?: Array<{ message?: { content?: string } }> };
   const content = payload.choices?.[0]?.message?.content;
   if (!content) throw new Error("OpenAI không trả nội dung phân tích");
-  return JSON.parse(content) as AnalysisResult;
+  return { ...(JSON.parse(content) as Omit<PortfolioAnalysisResult, "news">), news: news as PortfolioAnalysisResult["news"] };
 }
 
 export default async function handler(req: AnyRequest, res?: AnyResponse) {
@@ -61,9 +72,10 @@ export default async function handler(req: AnyRequest, res?: AnyResponse) {
     for (const asset of assets) {
       if (asset.price === null || asset.price === undefined) { errors.push(`${asset.ticker}: chưa có giá có timestamp`); continue; }
       try {
-        const result = await analyze(model, asset, { price: Number(asset.price), changePercent: asset.change_percent === null ? null : Number(asset.change_percent), asOf: asset.as_of });
+        const news = await fetchNews(String(asset.provider_code ?? asset.ticker));
+        const result = await analyze(model, asset, { price: Number(asset.price), changePercent: asset.change_percent === null ? null : Number(asset.change_percent), asOf: asset.as_of }, news);
         await pool.query(`INSERT INTO stock_advisor.asset_analyses (asset_id, run_key, signal, summary, reference_price, target_price, risk, confidence, as_of) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (run_key, asset_id) DO UPDATE SET signal=EXCLUDED.signal, summary=EXCLUDED.summary, reference_price=EXCLUDED.reference_price, target_price=EXCLUDED.target_price, risk=EXCLUDED.risk, confidence=EXCLUDED.confidence, as_of=EXCLUDED.as_of`, [asset.id, runKey, result.signal, result.summary, result.referencePrice, result.targetPrice, result.risk, result.confidence, Date.now()]);
-        results.push({ ticker: asset.ticker, ...result });
+        results.push({ ticker: asset.ticker, name: asset.display_name, ...result });
       } catch (error) { errors.push(`${asset.ticker}: ${error instanceof Error ? error.message : String(error)}`); }
     }
     return send(res, { ok: results.length > 0, status: errors.length && !results.length ? "failed" : errors.length ? "partial" : "success", model, analyzed: results.length, skipped: assets.length - results.length, results, errors }, 200);

@@ -191,5 +191,11 @@
 - [x] Mở rộng catalog quỹ Việt Nam gồm DCDS, VCBF-BCF và các mã quỹ tham khảo từ Fmarket
 - [x] Hiển thị nguồn tham khảo/quy tắc dữ liệu quỹ và thêm test cho nút AI, tìm kiếm quỹ, chống trùng
 
-- [ ] Push toàn bộ thay đổi mới nhất lên `trietnguyenk16-nkt/Stock-Advisor:main`
-- [ ] Xác minh commit remote và gửi hash cho người dùng
+- [x] Push toàn bộ thay đổi mới nhất lên `trietnguyenk16-nkt/Stock-Advisor:main` — code release `eab90a3`, branch main đã nhận thêm commit `2d81a29`
+- [x] Xác minh commit remote và gửi hash cho người dùng
+
+- [x] Rà soát dữ liệu giá, tin tức và asset hiện có cho phân tích toàn bộ danh mục
+- [x] Viết system prompt AI phân tích mua/bán/giữ có luận cứ, giá tham chiếu/mục tiêu và rủi ro
+- [x] Tạo endpoint phân tích danh mục và truyền tin tức/giá liên quan cho từng mã
+- [x] Thêm nút phân tích toàn bộ danh mục, hiển thị mỗi mã cách một dòng phân cách rõ ràng
+- [x] Báo lỗi rõ ràng khi chọn lại mã đã có và thêm tests cho duplicate/prompt/format
