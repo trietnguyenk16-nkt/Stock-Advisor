@@ -261,4 +261,4 @@
 
 - [x] Audit all GitHub issues without DONE status and classify code-vs-external dependencies; #16/#17 retain external verification dependencies, #18–#21 are code-complete
 - [x] Implement all not-DONE issue requirements that are actionable in the repository and add tests; added `server/notDoneIssueContracts.test.ts` for #16–#21
-- [ ] Validate, push code, update issue labels and save a checkpoint for the not-DONE issue batch
+- [x] Validate, push code, update issue labels and save a checkpoint for the not-DONE issue batch; commit `be07653` pushed, #18–#21 DONE, #16–#17 blocked-external
