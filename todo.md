@@ -274,3 +274,7 @@
 - [x] Audit and document quote/news provider inputs used by AI; quote providers carry source/asOf and AI news now uses CafeF plus Yahoo Finance
 - [x] Implement source- and timestamp-aware market/news payload for AI analysis; each news item includes publisher, link, publishedAt, fetchedAt and sourceType
 - [x] Add provider/payload/fallback tests, validate, push and checkpoint; commit `4906aec` pushed with 70 tests passing
+
+- [x] Update AI decision contract so BUY/SELL are selected when evidence supports them and HOLD is reserved for insufficient/neutral evidence; prompt explicitly rejects default HOLD
+- [x] Add actionable strategy fields for entry zone, position sizing, take-profit, stop-loss and invalidation conditions; rendered in `AiResultsPanel`
+- [ ] Add strategy regression tests, validate, push and checkpoint

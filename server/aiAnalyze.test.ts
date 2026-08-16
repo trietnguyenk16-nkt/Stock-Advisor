@@ -3,13 +3,18 @@ import handler, { buildAssetsFromQuotes, fetchNews, PORTFOLIO_AI_SYSTEM_PROMPT, 
 
 describe("portfolio AI analysis contract", () => {
   it("defines a cautious prompt with signals, prices, reasoning and risk rules", () => {
-    expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("BUY, SELL hoặc HOLD");
+    expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("chọn BUY");
+    expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("SELL");
+    expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("chọn HOLD");
     expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("giá mục tiêu");
     expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("bản tin kinh tế uy tín");
     expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("bản tin kinh tế uy tín");
     expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("không dùng nguồn không có trong payload");
     expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("HOLD");
     expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("không phải tư vấn đầu tư");
+    expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("Không được chọn HOLD theo mặc định");
+    expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("vùng vào lệnh");
+    expect(PORTFOLIO_AI_SYSTEM_PROMPT).toContain("mức cắt lỗ");
   });
 });
 
