@@ -12,6 +12,12 @@ export function normalizeAiAnalysisResponse(payload: AiAnalysisResponse, fallbac
 
 export const SYNC_COMPLETE_EVENT = "stock-advisor-sync-complete";
 
+export function subscribeToSyncComplete(callback: () => void) {
+  if (typeof window === "undefined") return () => undefined;
+  window.addEventListener(SYNC_COMPLETE_EVENT, callback);
+  return () => window.removeEventListener(SYNC_COMPLETE_EVENT, callback);
+}
+
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { credentials: "include", ...init, headers: { "content-type": "application/json", ...(init?.headers ?? {}) } });
   const body = await response.json().catch(() => ({}));

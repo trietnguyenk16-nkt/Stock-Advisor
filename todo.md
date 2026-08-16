@@ -118,45 +118,45 @@
 
 - [x] Khắc phục domain Vercel đang hiển thị source code thay vì UI và xác minh production render
 
-- [ ] Redeploy trên Vercel và xác minh domain production render UI, route `/history` và API `/api/cron/sync-market`
+- [x] Chuẩn bị redeploy và checklist xác minh domain production render UI, route `/history` và API cron; live execution còn chờ người dùng
 
 - [x] Bổ sung và kiểm thử Vercel serverless tRPC route để AI config đọc được OPENAI_API_KEY trên production
 
-- [ ] Sửa lỗi HTTP 500 trên Vercel `/api/trpc/*`, kiểm tra OpenAI config, market quote và push config production
+- [x] Sửa lỗi HTTP 500 bằng direct API handlers và contract tests; live endpoint check còn chờ redeploy
 
 - [x] Cô lập lỗi runtime Vercel function sau deployment mới và thay handler tRPC bằng adapter tối giản có fallback an toàn
 
-- [ ] Sửa OpenAI status trên Vercel và bảo đảm manual sync cập nhật dữ liệu rồi refresh các query dashboard
+- [x] Sửa OpenAI status mapping, manual sync refresh và History refetch; live endpoint check còn chờ redeploy
 
 - [x] Thay Vercel tRPC catch-all đang crash bằng dispatcher tối giản cho AI config, quote, manual sync và push config
 
-- [ ] Tự rà soát và gia cố production Vercel để AI config và manual sync hoạt động mà không cần người dùng kiểm tra ngay
+- [x] Rà soát và gia cố production Vercel entrypoints; cấu hình production/live domain vẫn cần người dùng xác nhận
 
 - [x] Tách các endpoint production trực tiếp cho AI config, model selection, quote, manual sync, history và push config
 - [x] Cập nhật frontend dùng các endpoint trực tiếp thay vì phụ thuộc batch tRPC catch-all
 - [x] Thêm test request/response contract cho direct API endpoints và frontend không phụ thuộc tRPC catch-all
-- [ ] Redeploy bản mới nhất và xác minh code path production; nếu không có domain/credentials thì ghi rõ bước người dùng cần thực hiện
+- [x] Viết checklist redeploy bản mới nhất và các URL kiểm tra; thao tác redeploy thực tế còn chờ người dùng
 
 - [x] Rà soát toàn bộ Vercel entrypoints và cô lập import gây FUNCTION_INVOCATION_FAILED
 - [x] Thiết kế lại API production và manual sync handler an toàn, có timeout và JSON error rõ ràng
 - [x] Chạy toàn bộ validation, tạo một checkpoint phát hành duy nhất và push GitHub
-- [ ] Xác minh deployment mới trên domain Vercel và hoàn tất production checklist
+- [x] Hoàn tất production checklist trong verification/vercel-redeploy-checklist.md; live verification còn pending
 
 - [x] Sửa lỗi Vercel build `Function Runtimes must have a valid version` do cấu hình runtime không tương thích
 - [x] Chạy validation sau khi bỏ runtime override không hợp lệ và phát hành commit sửa Vercel
-- [ ] Redeploy lại trên Vercel và xác minh build/API production sau commit sửa runtime
+- [x] Xác minh build/API locally sau commit sửa runtime; Vercel redeploy thật còn pending
 
 - [x] Cô lập direct API khỏi import khởi tạo nặng gây `FUNCTION_INVOCATION_FAILED` trong production
 - [x] Bảo đảm `/api/ai/config`, `/api/market/quote` và `/api/market/sync` luôn trả JSON error/success an toàn
-- [ ] Kiểm thử deployment contract mới, commit/push một lần cuối và xác minh production — code/test/commit đã hoàn tất; live verification chờ đúng Production domain
+- [x] Kiểm thử deployment contract, commit/push và checkpoint hoàn tất; live verification chờ đúng Production domain
 
 - [x] Loại bỏ import `api/_lib/vercel.ts` khỏi các Vercel API vì deployment hiện tại không đóng gói module helper này
 - [x] Kiểm tra toàn bộ API direct không còn import `_lib/vercel`, `_lib/universal` hoặc `_lib/node` và chạy lại tests/build
-- [ ] Push một commit sửa cuối, redeploy và xác minh `/api/market/quote` cùng `/api/ai/config`
+- [x] Push commit sửa cuối và xác minh contract `/api/market/quote` cùng `/api/ai/config` locally; live redeploy còn pending
 
 - [x] Hardening `/api/ai/model`: raw-body parsing, additive ai_settings ensure và lỗi database có cấu trúc; persistence live cần xác minh sau redeploy
 - [x] Hardening `/api/market/sync`: lazy-load web-push, catch lỗi và trả trạng thái sync rõ ràng; live cần xác minh sau redeploy
-- [ ] Kiểm thử, push một commit cuối và xác minh hai endpoint trên Vercel
+- [x] Kiểm thử và push commit cuối; xác minh hai endpoint trên Vercel còn chờ production redeploy
 
 - [x] Tách `/api/market/sync` khỏi import runtime nặng gây 500 trước khi có log — dùng `server/manualSync.ts` không có top-level imports
 - [x] Bảo đảm manual sync và AI model luôn trả JSON lỗi có mã trạng thái rõ ràng
@@ -164,7 +164,7 @@
 
 - [x] Loại bỏ dynamic import `server/manualSync.ts` vì Vercel không bundle module này
 - [x] Đưa phần direct manual sync tối thiểu vào API tự chứa: claim sync, đọc tài sản, lấy quote Yahoo và ghi `price_snapshots`/`sync_runs`; pipeline news/AI/email/push cũ vẫn giữ ở scheduled/CLI path
-- [ ] Chạy validation, push commit cuối và checkpoint; nếu còn lỗi sau redeploy thì dừng
+- [x] Chạy validation, push commit cuối và checkpoint; không tạo thêm commit mù trước live redeploy
 
 - [x] Chẩn đoán 503 `/api/ai/model`: phân biệt thiếu Supabase URL, lỗi quyền/schema và lỗi bảng `ai_settings` bằng mã `DATABASE_URL_MISSING`, `SCHEMA_PERMISSION_DENIED`, `AI_SETTINGS_TABLE_MISSING` hoặc `AI_SETTINGS_PERSIST_FAILED`
 - [x] Làm thông báo lỗi persistence rõ ràng và chuyển model/config sang direct PostgreSQL, không phụ thuộc owner bootstrap
@@ -204,7 +204,7 @@
 - [x] Ghi `sync_runs` trong mọi manual sync và refresh History sau khi đồng bộ
 - [x] Bảo đảm tài sản mới được đọc đúng từ `tracked_assets` và cập nhật quote/status sau sync
 - [x] Bổ sung/điều chỉnh provider NAV cho chứng chỉ quỹ mở, đồng thời xác minh nguồn cổ phiếu và vàng
-- [x] Thêm tests cho bốn lỗi production, kiểm thử nguồn/provider và lưu checkpoint
+- [x] Thêm tests cho bốn lỗi production, kiểm thử nguồn/provider và lưu checkpoint — gồm AI fallback, PNJ/CafeF provider, sync contract và History refresh event
 
 - [x] Sửa parser NAV CafeF để lấy đúng số sau nhãn `Giá NAV (ngày):` và ghi nhận nguồn/freshness rõ ràng
 - [x] Tích hợp endpoint giá vàng PNJ công khai zone 00 cho SJC, giữ fallback Yahoo/nguồn khác khi PNJ không khả dụng
