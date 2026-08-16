@@ -280,4 +280,4 @@
 - [x] Add strategy regression tests, validate, push and checkpoint; commit `6355c99` pushed with 70 tests passing
 
 - [x] Ensure the user requirement field reaches each AI analysis with explicit priority and scope; requirement is included in system context and `userRequirement` payload
-- [ ] Add regression coverage for requirement propagation and validation, then validate, push and checkpoint
+- [x] Add regression coverage for requirement propagation and validation, then validate, push and checkpoint; commit `507e8cb` pushed with 71 tests passing
