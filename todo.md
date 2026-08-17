@@ -288,3 +288,7 @@
 - [x] Audit and fix user-requirement priority mode so custom instructions are applied without being diluted by generic prompt guidance; requirement-first mode now uses a dedicated system context
 - [x] Persist and query AI analysis history by date with summary-first and expandable detail; History reads `ai_advice_runs.response_json` and expands per-asset details
 - [x] Fix sync history run count display, add regression tests, validate, push and checkpoint; History filters runs by Vietnam date and shows count badges
+
+- [x] Reproduce why persisted sync/AI runs are absent from History and verify database read/write paths; DB verification exposed SELECT permission denial and History now surfaces the actual error instead of showing 0 silently
+- [x] Make History default to today in Vietnam time, support explicit date filtering, and sort sync/AI runs descending; date defaults to Vietnam today and selected dates use server-side range filtering
+- [x] Add populated-history regression tests, validate, push and checkpoint; 25 test files and 75 tests pass
