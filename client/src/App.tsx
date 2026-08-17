@@ -9,9 +9,9 @@ function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/history"} component={History} />
-      <Route path={"/404"} component={NotFound} />
+      <Route path="/"><Home /></Route>
+      <Route path="/history"><History /></Route>
+      <Route path="/404"><NotFound /></Route>
       {/* Final fallback route */}
       <Route component={NotFound} />
     </Switch>
@@ -26,7 +26,7 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <PwaInstallPrompt />
+      {!import.meta.env.DEV && <PwaInstallPrompt />}
       <Router />
     </ErrorBoundary>
   );

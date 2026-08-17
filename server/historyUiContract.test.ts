@@ -7,7 +7,7 @@ describe("History populated data contract", () => {
 
   it("defaults to Vietnam today and requests an explicit date", () => {
     expect(historySource).toContain('useState(() => vietnamToday())');
-    expect(historySource).toContain('directApi.history(historyDate || undefined)');
+    expect(historySource).toContain('directApi.history(historyDate)');
     expect(endpointSource).toContain("started_at BETWEEN $1 AND $2");
   });
 
@@ -21,5 +21,14 @@ describe("History populated data contract", () => {
     expect(endpointSource).toContain("FROM stock_advisor.sync_runs");
     expect(endpointSource).toContain("FROM stock_advisor.ai_advice_runs");
     expect(endpointSource).toContain('response_json AS "responseJson"');
+  });
+
+  it("returns persisted summary/detail fields and exposes a closeable detail panel", () => {
+    expect(endpointSource).toContain('summary_title AS "summaryTitle"');
+    expect(endpointSource).toContain('detail_text AS "detailText"');
+    expect(endpointSource).toContain('details_json AS "detailsJson"');
+    expect(historySource).toContain('openSyncDetail');
+    expect(historySource).toContain('openAiDetail');
+    expect(historySource).toContain('Đóng');
   });
 });

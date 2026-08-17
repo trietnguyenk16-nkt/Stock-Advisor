@@ -92,6 +92,9 @@ export const syncRuns = stockAdvisor.table("sync_runs", {
   assetsProcessed: integer("assets_processed").notNull().default(0),
   assetsSucceeded: integer("assets_succeeded").notNull().default(0),
   errorMessage: text("error_message"),
+  summaryTitle: text("summary_title"),
+  detailText: text("detail_text"),
+  detailsJson: jsonb("details_json"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -149,6 +152,8 @@ export const aiAdviceRuns = stockAdvisor.table("ai_advice_runs", {
   assetsAnalyzed: integer("assets_analyzed").notNull().default(0),
   assetsSkipped: integer("assets_skipped").notNull().default(0),
   errorMessage: text("error_message"),
+  summaryTitle: text("summary_title"),
+  detailText: text("detail_text"),
   responseJson: jsonb("response_json"),
   startedAt: bigint("started_at", { mode: "number" }).notNull(),
   finishedAt: bigint("finished_at", { mode: "number" }),

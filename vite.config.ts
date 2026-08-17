@@ -151,16 +151,26 @@ function vitePluginManusDebugCollector(): Plugin {
 }
 
 const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
+const REACT_ROOT = path.resolve(PROJECT_ROOT, "node_modules", "react");
+const REACT_DOM_ROOT = path.resolve(PROJECT_ROOT, "node_modules", "react-dom");
 
 export default defineConfig({
   plugins,
   resolve: {
     dedupe: ["react", "react-dom"],
-    alias: {
-      "@": path.resolve(import.meta.dirname, "client", "src"),
-      "@shared": path.resolve(import.meta.dirname, "shared"),
-      "@assets": path.resolve(import.meta.dirname, "attached_assets"),
-    },
+    alias: [
+      { find: /^react$/, replacement: path.join(REACT_ROOT, "index.js") },
+      { find: /^react\/jsx-runtime$/, replacement: path.join(REACT_ROOT, "jsx-runtime.js") },
+      { find: /^react\/jsx-dev-runtime$/, replacement: path.join(REACT_ROOT, "jsx-dev-runtime.js") },
+      { find: /^react-dom$/, replacement: path.join(REACT_DOM_ROOT, "index.js") },
+      { find: /^react-dom\/client$/, replacement: path.join(REACT_DOM_ROOT, "client.js") },
+      { find: "@", replacement: path.resolve(import.meta.dirname, "client", "src") },
+      { find: "@shared", replacement: path.resolve(import.meta.dirname, "shared") },
+      { find: "@assets", replacement: path.resolve(import.meta.dirname, "attached_assets") },
+    ],
+  },
+  optimizeDeps: {
+    include: ["react", "react/jsx-runtime", "react-dom", "react-dom/client"],
   },
   envDir: path.resolve(import.meta.dirname),
   root: path.resolve(import.meta.dirname, "client"),

@@ -292,3 +292,7 @@
 - [x] Reproduce why persisted sync/AI runs are absent from History and verify database read/write paths; DB verification exposed SELECT permission denial and History now surfaces the actual error instead of showing 0 silently
 - [x] Make History default to today in Vietnam time, support explicit date filtering, and sort sync/AI runs descending; date defaults to Vietnam today and selected dates use server-side range filtering
 - [x] Add populated-history regression tests, validate, push and checkpoint; 25 test files and 75 tests pass
+
+- [x] Create GitHub issues #37–#40 for sync and AI run summaries/details with click-to-open and close behavior
+- [x] Add additive-only database columns/tables and persistence for sync detail text plus AI summary title/detail text
+- [x] Implement History detail panels for selected sync and AI runs, add regression tests, validate, push and tag issues DONE
