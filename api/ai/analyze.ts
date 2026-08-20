@@ -22,6 +22,29 @@ export async function readBody(req: AnyRequest) {
 
 function modelFrom(value: unknown) { return value === "gpt-5-mini" ? "gpt-5-mini" : "gpt-4o-mini"; }
 
+const REQUIREMENT_STOPWORDS = new Set(["AI", "BUY", "SELL", "HOLD", "MUA", "BAN", "GIU", "GIA", "MA", "VA", "CHO", "TOI", "THEO", "HAY", "CHI", "PHAN", "TICH", "VANG", "QUY"]);
+
+function normalizeTicker(value: string) {
+  return value.trim().toUpperCase().replace(/\.VN$/, "");
+}
+
+export function extractRequestedTickers(requirement: string, availableTickers: string[]) {
+  const available = new Map(availableTickers.map((ticker) => [normalizeTicker(ticker), ticker]));
+  const requested = new Set<string>();
+  const candidates = requirement.match(/\b[A-Za-z][A-Za-z0-9.-]{1,9}\b/g) ?? [];
+  for (const candidate of candidates) {
+    const normalized = normalizeTicker(candidate);
+    if (REQUIREMENT_STOPWORDS.has(normalized)) continue;
+    // A token matching an existing Watchlist ticker is unambiguous, even if
+    // the user types it in lowercase or with the Yahoo `.VN` suffix.
+    if (available.has(normalized)) requested.add(available.get(normalized)!);
+    // Otherwise only treat an all-uppercase token as an explicit ticker;
+    // Vietnamese prose such as "Hãy phân tích" must not become tickers.
+    else if (candidate === candidate.toUpperCase() && /^[A-Z][A-Z0-9.-]{1,9}$/.test(candidate)) requested.add(candidate);
+  }
+  return Array.from(requested);
+}
+
 type AiNewsItem = { title: string; publisher: string; link: string; publishedAt: string | null; fetchedAt: string; sourceType: "VietnamNews" | "YahooFinance" };
 
 async function fetchYahooNews(query: string): Promise<AiNewsItem[]> {
@@ -146,7 +169,6 @@ export default async function handler(req: AnyRequest, res?: AnyResponse) {
     pool = new Pool({ connectionString: databaseUrl, max: 1, connectionTimeoutMillis: 8000, idleTimeoutMillis: 10000 }) as typeof pool;
     const body = await readBody(req);
     const additionalRequirement = typeof body.requirement === "string" ? body.requirement.trim().slice(0, 1200) : "";
-    const requestedTicker = /^[A-Z0-9][A-Z0-9.=/-]{0,31}$/i.test(additionalRequirement) ? additionalRequirement.toUpperCase() : null;
     const clientQuotes = clientQuoteMap(body.quotes);
     const settings = await pool.query("SELECT model FROM stock_advisor.ai_settings WHERE workspace_key='owner' LIMIT 1").catch(() => ({ rows: [] }));
     const model = modelFrom(body.model ?? settings.rows[0]?.model);
@@ -160,10 +182,13 @@ export default async function handler(req: AnyRequest, res?: AnyResponse) {
     if (!allAssets.length && clientQuotes.size) allAssets = buildAssetsFromQuotes(body.quotes);
     const runKey = `manual-ai:${Date.now()}`;
     const startedAt = Date.now();
-    const assets = requestedTicker ? allAssets.filter((asset) => String(asset.ticker).toUpperCase() === requestedTicker) : allAssets;
-    if (requestedTicker && assets.length === 0) {
-      const message = `${requestedTicker} chưa có trong Watchlist. Hãy thêm mã và đồng bộ trước khi phân tích.`;
-      await pool.query(`INSERT INTO stock_advisor.ai_advice_runs (run_key, requested_ticker, additional_requirement, model, status, assets_requested, assets_analyzed, assets_skipped, error_message, summary_title, detail_text, started_at, finished_at) VALUES ($1,$2,$3,$4,'failed',0,0,0,$5,$6,$5,$7,$7)`, [runKey, requestedTicker, additionalRequirement, model, message, `Không thể phân tích ${requestedTicker}`, startedAt]).catch(() => undefined);
+    const requestedTickers = extractRequestedTickers(additionalRequirement, allAssets.map((asset) => String(asset.ticker ?? "")));
+    const requestedTicker = requestedTickers.length ? requestedTickers.join(",").slice(0, 32) : null;
+    const requestedSet = new Set(requestedTickers.map(normalizeTicker));
+    const assets = requestedTickers.length ? allAssets.filter((asset) => requestedSet.has(normalizeTicker(String(asset.ticker ?? "")))) : allAssets;
+    if (requestedTickers.length && assets.length === 0) {
+      const message = `${requestedTickers.join(", ")} chưa có trong Watchlist. Hãy thêm mã và đồng bộ trước khi phân tích.`;
+      await pool.query(`INSERT INTO stock_advisor.ai_advice_runs (run_key, requested_ticker, additional_requirement, model, status, assets_requested, assets_analyzed, assets_skipped, error_message, summary_title, detail_text, started_at, finished_at) VALUES ($1,$2,$3,$4,'failed',0,0,0,$5,$6,$5,$7,$7)`, [runKey, requestedTicker, additionalRequirement, model, message, `Không thể phân tích ${requestedTickers.join(", ")}`, startedAt]).catch(() => undefined);
       return send(res, { ok: false, status: "failed", code: "TICKER_NOT_IN_WATCHLIST", message, model, analyzed: 0, skipped: 0, results: [], errors: [message] }, 200);
     }
     const results: Array<Record<string, unknown>> = [];

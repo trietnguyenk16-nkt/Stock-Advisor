@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import handler, { buildAnalysisMessages, buildAssetsFromQuotes, fetchNews, PORTFOLIO_AI_SYSTEM_PROMPT, readBody } from "../api/ai/analyze";
+import handler, { buildAnalysisMessages, buildAssetsFromQuotes, extractRequestedTickers, fetchNews, PORTFOLIO_AI_SYSTEM_PROMPT, readBody } from "../api/ai/analyze";
 
 describe("portfolio AI analysis contract", () => {
   it("defines a cautious prompt with signals, prices, reasoning and risk rules", () => {
@@ -28,6 +28,15 @@ describe("AI quote eligibility regression", () => {
     ]);
     expect(assets).toHaveLength(4);
     expect(assets.map((asset) => asset.ticker)).toEqual(["VNM.VN", "FPT.VN", "DCDS", "SJC"]);
+  });
+
+  it("scopes an explicit MBB requirement to MBB only, including .VN normalization", () => {
+    expect(extractRequestedTickers("Hãy phân tích MBB", ["MBB", "FPT.VN", "VNM.VN"])).toEqual(["MBB"]);
+    expect(extractRequestedTickers("Phân tích MBB.VN và FPT", ["MBB", "FPT.VN", "VNM.VN"])).toEqual(["MBB", "FPT.VN"]);
+  });
+
+  it("uses all Watchlist assets when the requirement has no explicit ticker", () => {
+    expect(extractRequestedTickers("Tập trung điểm mua ngắn hạn", ["MBB", "FPT.VN", "VNM.VN"])).toEqual([]);
   });
 
   it("propagates the user requirement with explicit priority to every AI analysis", () => {
