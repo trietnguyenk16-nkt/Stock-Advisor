@@ -296,3 +296,6 @@
 - [x] Create GitHub issues #37–#40 for sync and AI run summaries/details with click-to-open and close behavior
 - [x] Add additive-only database columns/tables and persistence for sync detail text plus AI summary title/detail text
 - [x] Implement History detail panels for selected sync and AI runs, add regression tests, validate, push and tag issues DONE
+
+- [x] Fix `self-signed certificate in certificate chain` error for Supabase connections on Vercel while maintaining TLS security; strip URL SSL overrides and support optional `SUPABASE_CA_CERT`
+- [x] Add regression tests for connection configuration, validate, push and checkpoint; 80 tests pass

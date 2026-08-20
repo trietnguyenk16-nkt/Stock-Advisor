@@ -10,12 +10,27 @@ let _pool: Pool | null = null;
 let _db: Database | null = null;
 let _ownerEnsured = false;
 
+export function normalizePostgresConnectionString(rawUrl: string) {
+  const parsed = new URL(rawUrl);
+  // pg gives SSL query parameters precedence over the `ssl` object. Remove them
+  // so Supabase's pooler cannot re-enable verify-full with an incompatible CA.
+  for (const key of ["sslmode", "sslrootcert", "sslcert", "sslkey"]) {
+    parsed.searchParams.delete(key);
+  }
+  return parsed.toString();
+}
+
+export function getPostgresSslConfig() {
+  const ca = process.env.SUPABASE_CA_CERT?.replace(/\\n/g, "\n").trim();
+  return ca ? { ca, rejectUnauthorized: true } : { rejectUnauthorized: false };
+}
+
 export async function getDb() {
   const configuredUrl = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!_db && configuredUrl) {
     try {
-      const connectionString = configuredUrl.replace(/([?&])sslmode=[^&]*/i, "$1").replace(/[?&]$/, "");
-      _pool = new Pool({ connectionString, ssl: { rejectUnauthorized: false }, max: 3, idleTimeoutMillis: 10_000, connectionTimeoutMillis: 10_000, maxUses: 500 });
+      const connectionString = normalizePostgresConnectionString(configuredUrl);
+      _pool = new Pool({ connectionString, ssl: getPostgresSslConfig(), max: 3, idleTimeoutMillis: 10_000, connectionTimeoutMillis: 10_000, maxUses: 500 });
       _db = drizzle(_pool);
       if (ENV.ownerOpenId && !_ownerEnsured) {
         try {

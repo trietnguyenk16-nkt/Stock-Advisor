@@ -1,5 +1,6 @@
 import { Pool } from "pg";
 import { describe, expect, it } from "vitest";
+import { getPostgresSslConfig, normalizePostgresConnectionString } from "./db";
 
 function getSupabaseDatabaseUrl() {
   return process.env.SUPABASE_DATABASE_URL ?? "";
@@ -14,9 +15,17 @@ describe("Supabase configuration", () => {
     expect(parsed.searchParams.get("sslmode")).toBe("require");
   });
 
+  it("removes URL SSL overrides before applying the explicit pg TLS config", () => {
+    const normalized = normalizePostgresConnectionString("postgresql://user:pass@db.example/postgres?sslmode=verify-full&sslrootcert=%2Ftmp%2Fwrong.crt&x=1");
+    expect(normalized).not.toContain("sslmode");
+    expect(normalized).not.toContain("sslrootcert");
+    expect(normalized).toContain("x=1");
+    expect(getPostgresSslConfig()).toEqual({ rejectUnauthorized: false });
+  });
+
   it("can execute a lightweight connectivity query", async () => {
-    const connectionString = getSupabaseDatabaseUrl().replace(/([?&])sslmode=[^&]*/i, "$1").replace(/[?&]$/, "");
-    const pool = new Pool({ connectionString, ssl: { rejectUnauthorized: false }, max: 1, connectionTimeoutMillis: 10_000 });
+    const connectionString = normalizePostgresConnectionString(getSupabaseDatabaseUrl());
+    const pool = new Pool({ connectionString, ssl: getPostgresSslConfig(), max: 1, connectionTimeoutMillis: 10_000 });
     try {
       const result = await pool.query("select 1 as ok");
       expect(result.rows[0]?.ok).toBe(1);
