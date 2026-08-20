@@ -12,10 +12,12 @@ let _ownerEnsured = false;
 
 export function normalizePostgresConnectionString(rawUrl: string) {
   const parsed = new URL(rawUrl);
-  // pg gives SSL query parameters precedence over the `ssl` object. Remove them
-  // so Supabase's pooler cannot re-enable verify-full with an incompatible CA.
-  for (const key of ["sslmode", "sslrootcert", "sslcert", "sslkey"]) {
-    parsed.searchParams.delete(key);
+  // pg gives SSL query parameters precedence over the `ssl` object. Remove
+  // every case variant so Supabase's pooler cannot re-enable verify-full with
+  // an incompatible CA or override the explicit Pool TLS configuration.
+  const sslKeys = new Set(["ssl", "sslmode", "sslrootcert", "sslcert", "sslkey"]);
+  for (const key of Array.from(parsed.searchParams.keys())) {
+    if (sslKeys.has(key.toLowerCase())) parsed.searchParams.delete(key);
   }
   return parsed.toString();
 }

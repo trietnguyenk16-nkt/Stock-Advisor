@@ -16,9 +16,10 @@ describe("Supabase configuration", () => {
   });
 
   it("removes URL SSL overrides before applying the explicit pg TLS config", () => {
-    const normalized = normalizePostgresConnectionString("postgresql://user:pass@db.example/postgres?sslmode=verify-full&sslrootcert=%2Ftmp%2Fwrong.crt&x=1");
-    expect(normalized).not.toContain("sslmode");
-    expect(normalized).not.toContain("sslrootcert");
+    const normalized = normalizePostgresConnectionString("postgresql://user:pass@db.example/postgres?SSLMODE=verify-full&sslrootcert=%2Ftmp%2Fwrong.crt&ssl=true&x=1");
+    expect(normalized.toLowerCase()).not.toContain("sslmode");
+    expect(normalized.toLowerCase()).not.toContain("sslrootcert");
+    expect(normalized.toLowerCase()).not.toContain("ssl=true");
     expect(normalized).toContain("x=1");
     expect(getPostgresSslConfig()).toEqual({ rejectUnauthorized: false });
   });

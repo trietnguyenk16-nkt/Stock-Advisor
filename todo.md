@@ -299,3 +299,6 @@
 
 - [x] Fix `self-signed certificate in certificate chain` error for Supabase connections on Vercel while maintaining TLS security; strip URL SSL overrides and support optional `SUPABASE_CA_CERT`
 - [x] Add regression tests for connection configuration, validate, push and checkpoint; 80 tests pass
+
+- [x] Reproduce production `/history` TLS failure with the effective Vercel/Supabase connection settings; failure traced to SSL query overrides that can survive normalization
+- [x] Fix the effective pg SSL configuration, add a production-like regression test, validate, push and checkpoint; remove case-insensitive `ssl`, `sslmode`, `sslrootcert`, `sslcert`, `sslkey` overrides
